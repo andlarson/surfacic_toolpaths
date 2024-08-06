@@ -1,0 +1,22 @@
+# Vim
+tags
+tags/
+*.swp
+
+# Python
+.venv/
+
+# MyPy
+.mypy_cache/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+
+# Clangd
+.clangd
+compile_commands.json
+
+# General 
+.cache/
+build/
