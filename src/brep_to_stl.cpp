@@ -12,7 +12,7 @@
 #include "Poly_Triangulation.hxx"
 #include "BRep_Tool.hxx"
 
-#include "brep_to_stl.hxx"
+#include "include/brep_to_stl.hxx"
 
 /*
     Generates a surface mesh on a shape of arbitrary topology. 

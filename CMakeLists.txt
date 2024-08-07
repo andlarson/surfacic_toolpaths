@@ -1,25 +1,37 @@
 cmake_minimum_required(VERSION 3.28)
 project(surfacic_toolpaths LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-# DEBUG: Let's link against the OpenCascade libraries that I compiled with debug
-#     symbols.
-# set(OpenCASCADE_ROOT "/Users/andrewlarson/Desktop/misc/programming/repos_for_reference/OCCT_install/")
+# ------------------------------------------------------------------------------
+#                                   Library
+# ------------------------------------------------------------------------------
 
 find_package(OpenCASCADE REQUIRED)
 
-add_executable(surfacic_toolpaths
-               src/main.cpp
-               src/brep_builder.cpp
-               src/brep_to_stl.cpp
-               src/util.cpp)
+add_library(surfacic_toolpaths SHARED
+            "${CMAKE_SOURCE_DIR}/src/brep_builder.cpp"
+            "${CMAKE_SOURCE_DIR}/src/brep_to_stl.cpp"
+            "${CMAKE_SOURCE_DIR}/src/util.cpp")
 
-target_include_directories(surfacic_toolpaths PRIVATE 
-                           ${OpenCASCADE_INCLUDE_DIR}
+target_include_directories(surfacic_toolpaths 
+                           PUBLIC
+                           "${CMAKE_SOURCE_DIR}"
                           )
 
-target_link_libraries(surfacic_toolpaths PRIVATE 
-                      ${OpenCASCADE_ModelingAlgorithms_LIBRARIES}
+
+target_link_libraries(surfacic_toolpaths
+                      PUBLIC
+                      ${OpenCASCADE_LIBRARIES}
+                     )
+
+# ------------------------------------------------------------------------------
+#                                   Tests 
+# ------------------------------------------------------------------------------
+
+add_executable(test "${CMAKE_SOURCE_DIR}/tests/test.cpp")
+
+target_link_libraries(test PRIVATE
+                      surfacic_toolpaths
                      )

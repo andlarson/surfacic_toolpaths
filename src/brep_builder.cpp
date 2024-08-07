@@ -26,8 +26,8 @@
 #include "BRepOffsetAPI_MakePipe.hxx"
 #include "BRepAlgoAPI_Fuse.hxx"
 
-#include "brep_builder.hxx"
-#include "util.hxx"
+#include "include/brep_builder.hxx"
+#include "include/util.hxx"
 
 /* 
    ============================================================================
