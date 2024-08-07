@@ -13,7 +13,7 @@ int main(void)
     
     std::vector<Point3D> interpolation_points {{0, 0, 3},
                                                {0, 1, 3},
-                                               {1, 1, 3}};
+                                               {0, 2, 3}};
 
     std::vector<std::pair<uint64_t, Vec3D>> tangents {{{0}, {0, -1, 0}}};
 

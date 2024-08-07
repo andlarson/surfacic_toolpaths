@@ -118,7 +118,7 @@ ToolCurve::ToolCurve(const std::vector<Point3D>& points,
     
     // Done after conversion to OCCT because some of this uses OCCT functionality.
     const GProp_PEquation property_tester(*points_to_interpolate, TOLERANCE);
-    assert(property_tester.IsPlanar());
+    assert(property_tester.IsPlanar() || property_tester.IsLinear());
     assert(compare_fp(points[0][2], points[1][2]));
 
     // ------------------------------------------------------------------------ 
