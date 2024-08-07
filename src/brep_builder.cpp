@@ -89,31 +89,25 @@ ToolCurve::ToolCurve(const std::vector<Point3D>& points,
     
     // ------------------------------------------------------------------------ 
     //                          Convert to OCCT format
-
-    Handle(TColgp_HArray1OfPnt) points_to_interpolate {new TColgp_HArray1OfPnt(0, points.size() - 1)};
+    
+    Handle(TColgp_HArray1OfPnt) points_to_interpolate {new TColgp_HArray1OfPnt(1, points.size())};
     for (uint64_t i {0}; i < points.size(); ++i)
     {
-        (*points_to_interpolate)[i] = gp_Pnt(points[i][0], 
-                                             points[i][1], 
-                                             points[i][2]);
+        (*points_to_interpolate)[i + 1] = gp_Pnt(points[i][0], 
+                                                 points[i][1], 
+                                                 points[i][2]);
     }
 
-    Handle(TColStd_HArray1OfBoolean) tangent_bools {new TColStd_HArray1OfBoolean(0, points.size() - 1)};
-
-    // TODO: Make sure that all booleans start out false and, if so, remove this!
-    for (auto& b : *tangent_bools)
-    {
-        if (b != false) assert(false);
-        b = false;
-    }
+    Handle(TColStd_HArray1OfBoolean) tangent_bools {new TColStd_HArray1OfBoolean(1, points.size())};
+    tangent_bools->Init(false);
     
-    Handle(TColgp_HArray1OfVec) tangent_vecs {new TColgp_HArray1OfVec(0, points.size() - 1)};
+    Handle(TColgp_HArray1OfVec) tangent_vecs {new TColgp_HArray1OfVec(1, points.size())};
     for (uint64_t i {0}; i < tangents.size(); ++i)
     {
-        (*tangent_vecs)[tangents[i].first] = gp_Vec(tangents[i].second[0],
-                                                    tangents[i].second[1],
-                                                    tangents[i].second[2]);
-        (*tangent_bools)[i] = true;
+        (*tangent_vecs)[tangents[i].first + 1] = gp_Vec(tangents[i].second[0],
+                                                        tangents[i].second[1],
+                                                        tangents[i].second[2]);
+        (*tangent_bools)[i + 1] = true;
     }
 
     // ------------------------------------------------------------------------ 
@@ -165,13 +159,7 @@ ToolPath::ToolPath(const CylindricalTool& tool,
 */
 static TopoDS_Wire interpolate(const ToolCurve& curve)
 {
-    // DEBUG
-    Handle(TColStd_HArray1OfReal) test {new TColStd_HArray1OfReal(0, 2)};
-    (*test)[0] = 1;
-    (*test)[1] = 2;
-    (*test)[2] = 3;
-
-    GeomAPI_Interpolate interpolation(curve.points_to_interpolate, test, false, std::numeric_limits<double>::min());
+    GeomAPI_Interpolate interpolation(curve.points_to_interpolate, false, std::numeric_limits<double>::min());
     
     // Constrain interpolation with tangents, do the interpolation, make sure
     //     it was successful, and extract the results.

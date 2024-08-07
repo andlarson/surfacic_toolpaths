@@ -4,6 +4,10 @@ project(surfacic_toolpaths LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+# DEBUG: Let's link against the OpenCascade libraries that I compiled with debug
+#     symbols.
+# set(OpenCASCADE_ROOT "/Users/andrewlarson/Desktop/misc/programming/repos_for_reference/OCCT_install/")
+
 find_package(OpenCASCADE REQUIRED)
 
 add_executable(surfacic_toolpaths
