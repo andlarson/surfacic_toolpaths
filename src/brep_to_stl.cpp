@@ -53,6 +53,9 @@ void shape_to_stl(const std::string solid_name,
         const TopoDS_Face& aFace {TopoDS::Face(aFaceIter.Current())};
         TopLoc_Location aLoc;
         const Handle(Poly_Triangulation)& aPolyTri {BRep_Tool::Triangulation(aFace, aLoc)};
+        
+        if (aPolyTri.IsNull())
+            continue;
 
         for (int aTriIter = 1; aTriIter <= aPolyTri->NbTriangles(); ++aTriIter)
         {

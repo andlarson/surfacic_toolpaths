@@ -20,8 +20,8 @@ class CylindricalTool
 {
 public:
 
-    int height;
-    int radius;
+    double height;
+    double radius;
 };
 
 /*

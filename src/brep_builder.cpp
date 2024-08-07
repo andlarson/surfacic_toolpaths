@@ -163,7 +163,10 @@ static TopoDS_Wire interpolate(const ToolCurve& curve)
     
     // Constrain interpolation with tangents, do the interpolation, make sure
     //     it was successful, and extract the results.
-    interpolation.Load(*(curve.tangents), curve.tangent_bools);
+    
+    // DEBUG
+    // interpolation.Load(*(curve.tangents), curve.tangent_bools);
+
     interpolation.Perform();
     interpolation.IsDone();
     Handle(Geom_BSplineCurve) interpolated_curve {interpolation.Curve()};
@@ -213,9 +216,9 @@ static TopoDS_Face construct_face(gp_Vec normal, gp_Pnt bottom_point,
     gp_Pnt p2(p1.X() + height * v2.X(),
               p1.Y() + height * v2.Y(),
               p1.Z() + height * v2.Z());
-    gp_Pnt p3(p2.X() - (width / 2) * v1.X(),
-              p2.Y() - (width / 2) * v1.Y(),
-              p2.Z() - (width / 2) * v1.Z());
+    gp_Pnt p3(p2.X() - width * v1.X(),
+              p2.Y() - width * v1.Y(),
+              p2.Z() - width * v1.Z());
     gp_Pnt p4(p3.X() - height * v2.X(),
               p3.Y() - height * v2.Y(),
               p3.Z() - height * v2.Z());
@@ -291,23 +294,23 @@ static TopoDS_Shape sweep_tool(const ToolCurve& curve,
                                const CylindricalTool& tool_volume)
 {
     const TopoDS_Wire interpolation {interpolate(curve)};
-    const TopoDS_Face tool_face {construct_face((*curve.tangents)[0], 
-                                                (*curve.points_to_interpolate)[0], 
+    const TopoDS_Face tool_face {construct_face(curve.tangents->First(), 
+                                                curve.points_to_interpolate->First(), 
                                                 tool_volume.radius * 2, 
                                                 tool_volume.height)};
 
     BRepOffsetAPI_MakePipe pipe(interpolation, tool_face);
-
+    
     // Build the cylinders that act as the start and end caps of the tool path. 
     // These cylinders have rotation axii of symmetry that also point in the
     //     +z direction.
-    TopoDS_Shape start_cap {make_cylinder((*curve.points_to_interpolate)[0], 
-                           tool_volume.radius, 
-                           tool_volume.height)};
+    TopoDS_Shape start_cap {make_cylinder(curve.points_to_interpolate->First(), 
+                                          tool_volume.radius, 
+                                          tool_volume.height)};
 
-    TopoDS_Shape end_cap {make_cylinder((*curve.points_to_interpolate)[curve.points_to_interpolate->Size() - 1], 
-                          tool_volume.radius, 
-                          tool_volume.height)};
+    TopoDS_Shape end_cap {make_cylinder(curve.points_to_interpolate->Last(), 
+                                        tool_volume.radius, 
+                                        tool_volume.height)};
     
     BRepAlgoAPI_Fuse res1(pipe, start_cap);
     assert(res1.HasErrors() == false);
