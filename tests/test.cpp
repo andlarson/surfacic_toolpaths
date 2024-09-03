@@ -5,22 +5,19 @@
 #include <fstream>
 #include <vector>
 
-#include "include/brep_to_stl.hxx"
-#include "include/brep_builder.hxx"
+#include "brep_to_stl.hxx"
+#include "brep_builder.hxx"
 
-int main(void)
+int main()
 {
-    CylindricalTool tool {1, .2};    
+    CylindricalTool tool {.5, .1};    
     
-    std::vector<Point3D> interpolation_points {{1, 0, 3},
-                                               {2, 0, 3},
-                                               {3, 0, 3}};
-
-    std::vector<std::pair<uint64_t, Vec3D>> tangents {{{0}, {1, 0, 0}}};
-
-    ToolCurve curve(interpolation_points, tangents);
+    std::vector<Point3D> interpolation_points {{1, 0, 0},
+                                               {1, 1, 0},
+                                               {0, 1, 0}};
+    std::vector<std::pair<uint64_t, Vec3D>> tangents {{0, {0, 1, 0}}, {1, {1, 0, 0}}, {2, {-1, 0, 0}}};
     
-    ToolPath tool_path(tool, curve);
+    ToolPath tool_path(tool, interpolation_points, tangents);
     std::cout << "Finished B-Rep construction of tool path shape." << std::endl;
 
     mesh_surface(tool_path.tool_path, .5, .00001); 

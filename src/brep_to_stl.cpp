@@ -3,8 +3,10 @@
         mesh.
 */
 
+// Standard library.
 #include <fstream>
 
+// Third party.
 #include "IMeshTools_Parameters.hxx"
 #include "BRepMesh_IncrementalMesh.hxx"
 #include "TopExp_Explorer.hxx"
@@ -12,6 +14,7 @@
 #include "Poly_Triangulation.hxx"
 #include "BRep_Tool.hxx"
 
+// Library public.
 #include "include/brep_to_stl.hxx"
 
 /*

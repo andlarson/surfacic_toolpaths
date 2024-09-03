@@ -1,24 +1,18 @@
 /*
-    Contains functionality to build an OCCT B-Rep data structure that occupies
+    Functionality to build an OCCT B-Rep data structure that occupies
         the space traced by the movement of a machine tool. 
 */
 
+// Standard library.
 #include <limits>
 #include <cmath>
 
-#include "gp_Pnt.hxx"
-#include "gp_Vec.hxx"
-#include "gp_Ax2.hxx"
-#include "gp.hxx"
-#include "TColgp_HArray1OfPnt.hxx"
-#include "TColStd_HArray1OfBoolean.hxx"
-#include "TColStd_HArray1OfReal.hxx"
+// Third party.
 #include "TopoDS_Wire.hxx"
 #include "TopoDS_Face.hxx"
 #include "GeomAPI_Interpolate.hxx"
 #include "Geom_BSplineCurve.hxx"
 #include "Geom_Plane.hxx"
-#include "GProp_PEquation.hxx"
 #include "BRepPrimAPI_MakeCylinder.hxx"
 #include "BRepBuilderAPI_MakeEdge.hxx"
 #include "BRepBuilderAPI_MakeWire.hxx"
@@ -26,107 +20,28 @@
 #include "BRepOffsetAPI_MakePipe.hxx"
 #include "BRepAlgoAPI_Fuse.hxx"
 
+// Library public.
 #include "include/brep_builder.hxx"
-#include "include/util.hxx"
+
+// Library private.
+#include "src/include/tool_curve.hxx"
 
 /* 
    ============================================================================
-                                    File Local 
+                            File Local Declarations
    ============================================================================ 
 */ 
-
-#define TOLERANCE pow(10, -7)
 
 static TopoDS_Shape sweep_tool(const ToolCurve& curve,
                                const CylindricalTool& tool_volume);
-static TopoDS_Shape make_cylinder(gp_Pnt center, double radius, double height);
-static TopoDS_Face construct_face(gp_Vec normal, gp_Pnt bottom_point,
-                                  double width, double height);
+static TopoDS_Shape make_cylinder(const gp_Pnt& center, 
+                                  const double radius, 
+                                  const double height);
+static TopoDS_Face construct_face(gp_Vec normal, 
+                                  const gp_Pnt& bottom_point,
+                                  const double width, 
+                                  const double height);
 static TopoDS_Wire interpolate(const ToolCurve& curve);
-
-/* 
-   ============================================================================
-                                    ToolCurve
-   ============================================================================ 
-*/ 
-
-/*
-    Defines a curve in space via interpolation that lies on a plane parallel to
-        the global xy axis. Does not allow full control over the interpolation 
-        process.
-    
-    Arguments:
-        points:   Points to be interpolated. The points must all lie on a single
-                      plane that has constant z value.
-        tangents: When a curve is interpolated between the points, these tangents
-                      will be honored. 
-                  A tangent need not be specified for every point. However, a 
-                      tangent must be specified for the first point that composes
-                      the curve.
-                  The tangents must have zero z component. 
-*/
-ToolCurve::ToolCurve(const std::vector<Point3D>& points,
-                     const std::vector<std::pair<uint64_t, Vec3D>>& tangents)
-{
-    // ------------------------------------------------------------------------ 
-    //                      Imperfect Precondition Checking 
-    
-    assert(points.size() > 1);
-    assert(tangents.size() >= 1);
-    assert(tangents.size() <= points.size());
-    
-    bool first_point_tangent {false};
-    for (const auto& tangent : tangents)
-    {
-        assert(tangent.first < points.size());
-        assert(compare_fp(tangent.second[2], 0));
-        if (tangent.first == 0)
-            first_point_tangent = true;
-    }
-    assert(first_point_tangent);
-
-    // ------------------------------------------------------------------------ 
-    
-    // ------------------------------------------------------------------------ 
-    //                          Convert to OCCT format
-    
-    Handle(TColgp_HArray1OfPnt) points_to_interpolate {new TColgp_HArray1OfPnt(1, points.size())};
-    for (uint64_t i {0}; i < points.size(); ++i)
-    {
-        (*points_to_interpolate)[i + 1] = gp_Pnt(points[i][0], 
-                                                 points[i][1], 
-                                                 points[i][2]);
-    }
-
-    Handle(TColStd_HArray1OfBoolean) tangent_bools {new TColStd_HArray1OfBoolean(1, points.size())};
-    tangent_bools->Init(false);
-    
-    Handle(TColgp_HArray1OfVec) tangent_vecs {new TColgp_HArray1OfVec(1, points.size())};
-    for (uint64_t i {0}; i < tangents.size(); ++i)
-    {
-        (*tangent_vecs)[tangents[i].first + 1] = gp_Vec(tangents[i].second[0],
-                                                        tangents[i].second[1],
-                                                        tangents[i].second[2]);
-        (*tangent_bools)[i + 1] = true;
-    }
-
-    // ------------------------------------------------------------------------ 
-   
-    
-    // ------------------------------------------------------------------------ 
-    //                    Imperfect Precondition Checking 
-    
-    // Done after conversion to OCCT because some of this uses OCCT functionality.
-    const GProp_PEquation property_tester(*points_to_interpolate, TOLERANCE);
-    assert(property_tester.IsPlanar() || property_tester.IsLinear());
-    assert(compare_fp(points[0][2], points[1][2]));
-
-    // ------------------------------------------------------------------------ 
-    
-    this->points_to_interpolate = points_to_interpolate;
-    this->tangent_bools = tangent_bools;
-    this->tangents = tangent_vecs;
-}
 
 /* 
    ============================================================================
@@ -138,34 +53,49 @@ ToolCurve::ToolCurve(const std::vector<Point3D>& points,
     Defines a toolpath. A toolpath is composed of a tool, occupying some volume,
         moving along a curve in space. 
 
-    See the helper functions that are called for documentation of assumptions
-        about orientation of tool with respect to the curve in space.
+    WARNING: Sometimes this function fails right now. The primary failure mode
+        is that the OCCT sweep() functionality segfaults in due to "degeneracy".
+        I suspect that this occurs when the swept volume ends up being self-
+        intersecting.
+
+    Arguments:
+        tool                : The shape of the tool.
+        interpolation_points: Points to be interpolated. The points must all 
+                                  lie on a single plane that has constant z value.
+        tangents:             A collection of (idx, tangent vector) pairs. Each (idx,
+                                  tangent vector) pair specifies the tangent at the point
+                                  at index idx in the list of points to be interpolated. 
+                              When a curve is interpolated between the points, these tangents
+                                  will be honored. 
+                              A tangent need not be specified for every point. However, a 
+                                  tangent must be specified for the first point that composes
+                                  the curve.
+                              All tangent vectors must have zero z component. The tool curve
+                                  must lie on a single plane.
 */
 ToolPath::ToolPath(const CylindricalTool& tool, 
-                   const ToolCurve& curve) 
+                   const std::vector<Point3D>& interpolation_points,
+                   const std::vector<std::pair<uint64_t, Vec3D>>& tangents)
 {
+    ToolCurve curve {interpolation_points, tangents};
     this->tool_path = sweep_tool(curve, tool);
 };
 
 /* 
    ============================================================================
-                                Helper Functions 
+                             File Local Definitions
    ============================================================================ 
 */ 
 
 /*
-    Converts specification of curve to wire via interpolation. The result must
-        be G1 continuous.
+    Converts specification of curve to wire via interpolation. The result is
+        guaranteed to be G1 continuous.
 */
 static TopoDS_Wire interpolate(const ToolCurve& curve)
 {
     GeomAPI_Interpolate interpolation(curve.points_to_interpolate, false, std::numeric_limits<double>::min());
     
-    // Constrain interpolation with tangents, do the interpolation, make sure
-    //     it was successful, and extract the results.
-    
-    // DEBUG
-    // interpolation.Load(*(curve.tangents), curve.tangent_bools);
+    interpolation.Load(*(curve.tangents), curve.tangent_bools);
 
     interpolation.Perform();
     interpolation.IsDone();
@@ -186,10 +116,6 @@ static TopoDS_Wire interpolate(const ToolCurve& curve)
 
     See toolpath.xopp for more details.
 
-    Assumes that:
-        (1) The centerline of the rectangle is parallel to the z axis.
-        (2) The normal to the face is parallel to the xy plane.
-
     Arguments:
         normal:       Normal to the face. Must be parallel to the xy plane.
         bottom_point: Location of the bottom point of the rectangular face in
@@ -197,8 +123,10 @@ static TopoDS_Wire interpolate(const ToolCurve& curve)
         width:        Width of the face. 
         height:       Height of the face.
 */
-static TopoDS_Face construct_face(gp_Vec normal, gp_Pnt bottom_point,
-                                  double width, double height)
+static TopoDS_Face construct_face(gp_Vec normal, 
+                                  const gp_Pnt& bottom_point,
+                                  const double width, 
+                                  const double height)
 {
     // An infinite plane. 
     Handle(Geom_Plane) plane = new Geom_Plane(bottom_point, normal);
@@ -260,7 +188,9 @@ static TopoDS_Face construct_face(gp_Vec normal, gp_Pnt bottom_point,
     Builds a cylinder on top of an arbitrary point in space, oriented in the 
         +z direction.
 */
-static TopoDS_Shape make_cylinder(gp_Pnt center, double radius, double height)
+static TopoDS_Shape make_cylinder(const gp_Pnt& center, 
+                                  const double radius, 
+                                  const double height)
 {
     gp_Ax2 axis(center, gp::DZ());
     BRepPrimAPI_MakeCylinder cylinder(axis, radius, height);
@@ -274,8 +204,8 @@ static TopoDS_Shape make_cylinder(gp_Pnt center, double radius, double height)
         If full generality was permitted, then:
         (1) There would be no restrictions on the curve. 
         (2) The volume occupied by the tool could intersect with the
-                beginning of the curve describing the path at an arbitrary 
-                point within the volume. 
+                the curve describing the path at an arbitrary point within 
+                the volume of the tool. 
         (3) The volume could be oriented arbitrarily with respect to curve,
                 and the angle could even vary along the curve.
 
@@ -287,8 +217,6 @@ static TopoDS_Shape make_cylinder(gp_Pnt center, double radius, double height)
                 to the curve does not change. 
         (4) The tool sits on top of the first point of the curve. 
     Under these assumptions, it's not possible to represent all toolpaths.
-
-    TODO: What happens in the case of self intersection?
 */
 static TopoDS_Shape sweep_tool(const ToolCurve& curve,
                                const CylindricalTool& tool_volume)
@@ -298,7 +226,7 @@ static TopoDS_Shape sweep_tool(const ToolCurve& curve,
                                                 curve.points_to_interpolate->First(), 
                                                 tool_volume.radius * 2, 
                                                 tool_volume.height)};
-
+    
     BRepOffsetAPI_MakePipe pipe(interpolation, tool_face);
     
     // Build the cylinders that act as the start and end caps of the tool path. 

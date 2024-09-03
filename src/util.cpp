@@ -1,4 +1,9 @@
-#include "include/util.hxx"
+/*
+    Miscellaneous utilities that are generally useful.
+*/
+
+// Library private.
+#include "src/include/util.hxx"
 
 // Dumb floating point comparison.
 // Warning: Be very careful. The correct way to compare floating point numbers

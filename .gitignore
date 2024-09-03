@@ -1,3 +1,6 @@
+# MacOS
+.DS_Store
+
 # Vim
 tags
 tags/
@@ -14,8 +17,10 @@ CMakeCache.txt
 CMakeFiles/
 
 # Clangd
-.clangd
 compile_commands.json
+
+# Xournalpp
+*.autosave.xopp
 
 # General 
 .cache/

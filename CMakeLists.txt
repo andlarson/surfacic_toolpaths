@@ -1,25 +1,33 @@
 cmake_minimum_required(VERSION 3.28)
 project(surfacic_toolpaths LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # ------------------------------------------------------------------------------
 #                                   Library
 # ------------------------------------------------------------------------------
 
-find_package(OpenCASCADE REQUIRED)
+# DEBUG: Find the OpenCASCADE package that I built from source with debug symbols,
+#     extra debug logging, etc.
+set(OpenCASCADE_ROOT "/Users/andrewlarson/Desktop/misc/programming/misc_installs/OCCT_debug/")
+
+find_package(OpenCASCADE CONFIG REQUIRED)
 
 add_library(surfacic_toolpaths SHARED
             "${CMAKE_SOURCE_DIR}/src/brep_builder.cpp"
             "${CMAKE_SOURCE_DIR}/src/brep_to_stl.cpp"
-            "${CMAKE_SOURCE_DIR}/src/util.cpp")
+            "${CMAKE_SOURCE_DIR}/src/util.cpp"
+            "${CMAKE_SOURCE_DIR}/src/tool_curve.cpp")
 
+# Make it possible to include the public headers and private headers within the library,
+#     but don't expose non-public headers to users of this CMake target.
 target_include_directories(surfacic_toolpaths 
-                           PUBLIC
-                           "${CMAKE_SOURCE_DIR}"
+                           PRIVATE
+                           ${CMAKE_SOURCE_DIR}
+                           INTERFACE
+                           "${CMAKE_SOURCE_DIR}/include"
                           )
-
 
 target_link_libraries(surfacic_toolpaths
                       PUBLIC

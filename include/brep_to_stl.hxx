@@ -1,5 +1,8 @@
+// ***** LIBRARY PUBLIC *****
+
 #pragma once
 
+// Third party.
 #include "TopoDS_Shape.hxx"
 
 void mesh_surface(TopoDS_Shape& to_mesh, 
