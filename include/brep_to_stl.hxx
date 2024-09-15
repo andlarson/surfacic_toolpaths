@@ -5,7 +5,7 @@
 // Third party.
 #include "TopoDS_Shape.hxx"
 
-void mesh_surface(TopoDS_Shape& to_mesh, 
+void mesh_surface(const TopoDS_Shape& to_mesh, 
                   const double angle=.5, 
                   const double deflection=.01);
 

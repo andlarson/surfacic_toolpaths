@@ -28,5 +28,6 @@ public:
 
     ToolPath(const CylindricalTool& tool, 
              const std::vector<Point3D>& points,
-             const std::vector<std::pair<uint64_t, Vec3D>>& tangents);
+             const std::vector<std::pair<uint64_t, Vec3D>>& tangents,
+             const bool display_result);
 };

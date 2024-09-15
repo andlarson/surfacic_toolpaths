@@ -25,6 +25,7 @@
 
 // Library private.
 #include "src/include/tool_curve.hxx"
+#include "src/include/glfw_occt_view.hxx"
 
 /* 
    ============================================================================
@@ -53,10 +54,22 @@ static TopoDS_Wire interpolate(const ToolCurve& curve);
     Defines a toolpath. A toolpath is composed of a tool, occupying some volume,
         moving along a curve in space. 
 
-    WARNING: Sometimes this function fails right now. The primary failure mode
-        is that the OCCT sweep() functionality segfaults in due to "degeneracy".
-        I suspect that this occurs when the swept volume ends up being self-
-        intersecting.
+    Does not allow the tool to be oriented arbitrarily with respect to the curve.
+        If full generality was permitted, then:
+        (1) There would be no restrictions on the curve. 
+        (2) The volume occupied by the tool could intersect with the
+                the curve describing the path at an arbitrary point within 
+                the volume of the tool. 
+        (3) The volume could be oriented arbitrarily with respect to curve,
+                and the angle could even vary along the curve.
+
+    However, full generality is not permitted. Instead, it must be the case that:
+        (1) The curve lives on a plane parallel to the xy axis.
+        (2) The curve is G1 continuous.
+        (3) The rotational axis of symmetry of the tool points in the +z
+                direction and the orientation of the tool with respect
+                to the curve does not change. 
+        (4) The tool sits on top of the first point of the curve. 
 
     Arguments:
         tool                : The shape of the tool.
@@ -67,18 +80,60 @@ static TopoDS_Wire interpolate(const ToolCurve& curve);
                                   at index idx in the list of points to be interpolated. 
                               When a curve is interpolated between the points, these tangents
                                   will be honored. 
-                              A tangent need not be specified for every point. However, a 
-                                  tangent must be specified for the first point that composes
-                                  the curve.
-                              All tangent vectors must have zero z component. The tool curve
-                                  must lie on a single plane.
+                              A tangent need not be specified for every point. 
+                                  However, a tangent must be specified for the 
+                                  first point that composes the curve.
+                              All tangent vectors must have zero z component. 
+                                  The tool curve must lie on a single plane.
+        display_result:       When enabled, causes two windows to be created
+                                  showing different intermediate B-Rep constructions.
 */
 ToolPath::ToolPath(const CylindricalTool& tool, 
                    const std::vector<Point3D>& interpolation_points,
-                   const std::vector<std::pair<uint64_t, Vec3D>>& tangents)
+                   const std::vector<std::pair<uint64_t, Vec3D>>& tangents,
+                   const bool display_result)
 {
-    ToolCurve curve {interpolation_points, tangents};
-    this->tool_path = sweep_tool(curve, tool);
+    const ToolCurve curve {interpolation_points, tangents};
+
+    const TopoDS_Wire interpolation {interpolate({interpolation_points, tangents})};
+
+    const TopoDS_Face tool_face {construct_face(curve.tangents->First(), 
+                                                curve.points_to_interpolate->First(), 
+                                                tool.radius * 2, 
+                                                tool.height)};
+    
+    // Do the sweep.
+    BRepOffsetAPI_MakePipe pipe(interpolation, tool_face);
+    // assert(!pipe.ErrorOnSurface());
+    
+    // Build the cylinders that act as the start and end caps of the tool path. 
+    // These cylinders have rotation axii of symmetry that point in the +z 
+    //     direction.
+    TopoDS_Shape start_cap {make_cylinder(curve.points_to_interpolate->First(), 
+                                          tool.radius, 
+                                          tool.height)};
+    TopoDS_Shape end_cap {make_cylinder(curve.points_to_interpolate->Last(), 
+                                        tool.radius, 
+                                        tool.height)};
+    
+    // Perform a boolean union between the sweep and the start and end caps of
+    //     the tool path. 
+    BRepAlgoAPI_Fuse res1(pipe, start_cap);
+    assert(res1.HasErrors() == false);
+    BRepAlgoAPI_Fuse res2(res1.Shape(), end_cap);
+    assert(res2.HasErrors() == false);
+    
+    // Record the resulting tool path.
+    tool_path = res2;
+    
+    if (display_result)
+    {
+        std::vector<TopoDS_Shape> shapes {interpolation, tool_face};
+        show_shapes(shapes);     
+
+        shapes = {res2};
+        show_shapes(shapes);     
+    }
 };
 
 /* 
@@ -195,55 +250,4 @@ static TopoDS_Shape make_cylinder(const gp_Pnt& center,
     gp_Ax2 axis(center, gp::DZ());
     BRepPrimAPI_MakeCylinder cylinder(axis, radius, height);
     return cylinder.Shape();
-}
-
-/*
-    Builds a B-Rep of a toolpath sweep through space.
-
-    Does not allow the tool to be oriented arbitrarily with respect to the curve.
-        If full generality was permitted, then:
-        (1) There would be no restrictions on the curve. 
-        (2) The volume occupied by the tool could intersect with the
-                the curve describing the path at an arbitrary point within 
-                the volume of the tool. 
-        (3) The volume could be oriented arbitrarily with respect to curve,
-                and the angle could even vary along the curve.
-
-    However, full generality is not permitted. Instead, it is assumed that:
-        (1) The curve lives on a plane parallel to the xy axis.
-        (2) The curve is G1 continuous.
-        (3) The rotational axis of symmetry of the tool points in the +z
-                direction and the orientation of the tool with respect
-                to the curve does not change. 
-        (4) The tool sits on top of the first point of the curve. 
-    Under these assumptions, it's not possible to represent all toolpaths.
-*/
-static TopoDS_Shape sweep_tool(const ToolCurve& curve,
-                               const CylindricalTool& tool_volume)
-{
-    const TopoDS_Wire interpolation {interpolate(curve)};
-    const TopoDS_Face tool_face {construct_face(curve.tangents->First(), 
-                                                curve.points_to_interpolate->First(), 
-                                                tool_volume.radius * 2, 
-                                                tool_volume.height)};
-    
-    BRepOffsetAPI_MakePipe pipe(interpolation, tool_face);
-    
-    // Build the cylinders that act as the start and end caps of the tool path. 
-    // These cylinders have rotation axii of symmetry that also point in the
-    //     +z direction.
-    TopoDS_Shape start_cap {make_cylinder(curve.points_to_interpolate->First(), 
-                                          tool_volume.radius, 
-                                          tool_volume.height)};
-
-    TopoDS_Shape end_cap {make_cylinder(curve.points_to_interpolate->Last(), 
-                                        tool_volume.radius, 
-                                        tool_volume.height)};
-    
-    BRepAlgoAPI_Fuse res1(pipe, start_cap);
-    assert(res1.HasErrors() == false);
-    BRepAlgoAPI_Fuse res2(res1.Shape(), end_cap);
-    assert(res2.HasErrors() == false);
-    
-    return res2.Shape();
 }
