@@ -6,9 +6,9 @@ if visualization is desired.
 
 ### WARNING
 
-This tool has only been tested on macOS and currently includes some machine-
-specific behavior in the build system. This machine-specific behavior will be
-removed soon.
+This tool has only been tested on macOS and currently includes some machine-specific 
+behavior in the build system. As such, if you want to use this tool, you *must* modify
+the CMakeLists.txt file.
 
 ### Building With CMake:
 
