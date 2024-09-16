@@ -58,13 +58,20 @@ static gp_Dir compute_average_vec(const std::vector<gp_Vec>& vecs)
 */ 
 
 /*
-    Generates a surface mesh on a shape of arbitrary topology. Adds vertex surface
+    Generates a surface mesh for an arbitrary topology. Adds vertex surface
         normals to the surface mesh.
+
+    If the input topology is weird, then this function can fail/take a long
+        time. There is no formal definition of weird and therefore this
+        function cannot test for weirdness, so to be safe, you should visualize
+        the topology you are trying to mesh before calling this function.
+        For example, I've found it takes forever to generate surface meshes
+        on topologies that include self intersections!
     
     Arguments:
-        to_mesh:    The BRep to generate a surface mesh on. If this shape already has 
-                        an underlying surface mesh, it is removed and the process
-                        is started anew.
+        to_mesh:    The topology to generate a surface mesh on. If this topology 
+                        already has an underlying surface mesh, it is removed 
+                        and the process is started anew.
         angle:      Maximum angular deflection allowed when generating surface mesh. 
         deflection: Maximum linear deflection allowed when generating surface mesh.
 

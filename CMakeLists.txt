@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # DEBUG: Find the OpenCASCADE package that I built from source with debug symbols,
 #     extra debug logging, etc.
-set(OpenCASCADE_ROOT "/Users/andrewlarson/Desktop/misc/programming/misc_installs/OCCT_debug/")
+set(OpenCASCADE_ROOT "/Users/andrewlarson/Desktop/misc/programming/misc_installs/OCCT_debug_lite/")
 find_package(OpenCASCADE CONFIG REQUIRED)
 
 find_package(glfw3 CONFIG REQUIRED)

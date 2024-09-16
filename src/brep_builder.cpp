@@ -56,25 +56,30 @@ static TopoDS_Wire interpolate(const ToolCurve& curve);
 
     Does not allow the tool to be oriented arbitrarily with respect to the curve.
         If full generality was permitted, then:
-        (1) There would be no restrictions on the curve. 
+        (1) There would be no restrictions on the curve.
         (2) The volume occupied by the tool could intersect with the
                 the curve describing the path at an arbitrary point within 
                 the volume of the tool. 
         (3) The volume could be oriented arbitrarily with respect to curve,
                 and the angle could even vary along the curve.
 
-    However, full generality is not permitted. Instead, it must be the case that:
+    However, full generality is not permitted. 
+    Instead, this function assumes that:
         (1) The curve lives on a plane parallel to the xy axis.
-        (2) The curve is G1 continuous.
-        (3) The rotational axis of symmetry of the tool points in the +z
+        (2) The rotational axis of symmetry of the tool points in the +z
                 direction and the orientation of the tool with respect
                 to the curve does not change. 
-        (4) The tool sits on top of the first point of the curve. 
+        (3) The tool sits on top of the first point of the curve. 
+
+    This function guarantees that:
+        (1) The resulting curve is G1 continuous.
 
     Arguments:
         tool                : The shape of the tool.
         interpolation_points: Points to be interpolated. The points must all 
                                   lie on a single plane that has constant z value.
+                                  The points must be specified in the order coherent
+                                  with the movement of the tool.
         tangents:             A collection of (idx, tangent vector) pairs. Each (idx,
                                   tangent vector) pair specifies the tangent at the point
                                   at index idx in the list of points to be interpolated. 
@@ -87,6 +92,9 @@ static TopoDS_Wire interpolate(const ToolCurve& curve);
                                   The tool curve must lie on a single plane.
         display_result:       When enabled, causes two windows to be created
                                   showing different intermediate B-Rep constructions.
+
+    Returns:
+        None.
 */
 ToolPath::ToolPath(const CylindricalTool& tool, 
                    const std::vector<Point3D>& interpolation_points,
@@ -101,6 +109,12 @@ ToolPath::ToolPath(const CylindricalTool& tool,
                                                 curve.points_to_interpolate->First(), 
                                                 tool.radius * 2, 
                                                 tool.height)};
+
+    if (display_result)
+    {
+        std::vector<TopoDS_Shape> shapes {interpolation, tool_face};
+        show_shapes(shapes); 
+    }
     
     // Do the sweep.
     BRepOffsetAPI_MakePipe pipe(interpolation, tool_face);
@@ -128,10 +142,7 @@ ToolPath::ToolPath(const CylindricalTool& tool,
     
     if (display_result)
     {
-        std::vector<TopoDS_Shape> shapes {interpolation, tool_face};
-        show_shapes(shapes);     
-
-        shapes = {res2};
+        std::vector<TopoDS_Shape> shapes {res2};
         show_shapes(shapes);     
     }
 };
