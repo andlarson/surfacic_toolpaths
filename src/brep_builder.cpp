@@ -103,7 +103,7 @@ ToolPath::ToolPath(const CylindricalTool& tool,
 {
     const ToolCurve curve {interpolation_points, tangents};
 
-    const TopoDS_Wire interpolation {interpolate({interpolation_points, tangents})};
+    const TopoDS_Wire interpolation {interpolate(curve)};
 
     const TopoDS_Face tool_face {construct_face(curve.tangents->First(), 
                                                 curve.points_to_interpolate->First(), 

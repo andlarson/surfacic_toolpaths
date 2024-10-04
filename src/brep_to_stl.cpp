@@ -116,6 +116,8 @@ void mesh_surface(const TopoDS_Shape& to_mesh,
         Per-face normals are included in the .stl file. Each per-face normal is
         computed by averaging whatever vertex normals are associated with the
         vertices of the face.
+    See https://www.fabbers.com/tech/STL_Format for the closest thing to a standardization
+        of the STL format.
     
     Arguments:
         solid_name: The desired name of the solid in the .stl file.
@@ -153,25 +155,25 @@ void shape_to_stl(const std::string solid_name,
             const gp_Vec face_normal {compute_average_vec({poly_tri->Normal(v1_idx), 
                                                            poly_tri->Normal(v2_idx), 
                                                            poly_tri->Normal(v3_idx)})};
-            f << "facet normal " << face_normal.X() << " " << 
-                                    face_normal.Y() << " " << 
-                                    face_normal.Z() << std::endl;
-            f << "outer loop" << std::endl;
+            f << "    " << "facet normal " << face_normal.X() << " " << 
+                                              face_normal.Y() << " " << 
+                                              face_normal.Z() << std::endl;
+            f << "        " << "outer loop" << std::endl;
 
-            f << "vertex " << (poly_tri->Node(tri(1))).X() << " " 
-                           << (poly_tri->Node(tri(1))).Y() << " " 
-                           << (poly_tri->Node(tri(1))).Z() << std::endl;
+            f << "            " << "vertex " << (poly_tri->Node(tri(1))).X() << " " 
+                                << (poly_tri->Node(tri(1))).Y() << " " 
+                                << (poly_tri->Node(tri(1))).Z() << std::endl;
 
-            f << "vertex " << (poly_tri->Node(tri(2))).X() << " " 
-                           << (poly_tri->Node(tri(2))).Y() << " " 
-                           << (poly_tri->Node(tri(2))).Z() << std::endl;
+            f << "            " << "vertex " << (poly_tri->Node(tri(2))).X() << " " 
+                                << (poly_tri->Node(tri(2))).Y() << " " 
+                                << (poly_tri->Node(tri(2))).Z() << std::endl;
 
-            f << "vertex " << (poly_tri->Node(tri(3))).X() << " " 
-                           << (poly_tri->Node(tri(3))).Y() << " " 
-                           << (poly_tri->Node(tri(3))).Z() << std::endl;
+            f << "            " << "vertex " << (poly_tri->Node(tri(3))).X() << " " 
+                                << (poly_tri->Node(tri(3))).Y() << " " 
+                                << (poly_tri->Node(tri(3))).Z() << std::endl;
 
-            f << "end loop" << std::endl;
-            f << "end facet" << std::endl;
+            f << "        " << "endloop" << std::endl;
+            f << "    " << "endfacet" << std::endl;
         }
     }
 

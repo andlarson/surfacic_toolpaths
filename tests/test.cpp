@@ -49,13 +49,18 @@ static void run_tests(const string& dir)
                 
         try
         {
-            ToolPath tool_path(tool, get<1>(test), get<2>(test), true);
+            cout << endl;
+            cout << "Starting B-Rep construction for test " << test_name << endl;
+            ToolPath tool_path(tool, get<1>(test), get<2>(test), false);
             cout << "Finished B-Rep construction for test " << test_name << endl;
-
+            
+            cout << "Starting to mesh surface for test " << test_name << endl;
             mesh_surface(tool_path.tool_path, .5, .00001); 
             cout << "Finished meshing surface for test " << test_name << endl;
             
-            shape_to_stl(test_name, tool_path.tool_path, "/Users/andrewlarson/Downloads/" + test_name + ".stl");
+            string stl_path = "/Users/andrewlarson/Downloads/" + test_name + ".stl";
+            shape_to_stl(test_name, tool_path.tool_path, stl_path);
+            cout << "Surface mesh written to: " << stl_path << endl;
         }
         catch (...)
         {
@@ -66,6 +71,7 @@ static void run_tests(const string& dir)
             cout << "SUCCESS: The test " << test_name << " succeeded!" << endl;
         else
             cout << "FAILURE: The test " << test_name << " failed!" << endl;
+        cout << endl;
     }
 }
 
