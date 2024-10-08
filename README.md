@@ -1,20 +1,18 @@
 A tool to convert descriptions of toolpaths in G-Code-esque format to surface
 meshes.
 
-Depends on Open Cascade Technology's geometric kernel. GLFW is also a dependency
-if visualization is desired.
+Depends on Open Cascade Technology's geometric kernel and GLFW for
+visualization.
 
 ### WARNING
+This tool has only been tested on macOS. 
 
-This tool has only been tested on macOS and currently includes some machine-specific 
-behavior in the build system. As such, if you want to use this tool, you *must* modify
-the CMakeLists.txt file.
-
-### Building With CMake:
-
+### Building and Installing With CMake:
 ```
 mkdir build/
 cd build/
 cmake ..
+ccmake .
 cmake --build .
+cmake --install .
 ```
