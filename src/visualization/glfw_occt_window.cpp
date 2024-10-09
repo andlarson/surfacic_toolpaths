@@ -21,7 +21,7 @@
 #include "GLFW/glfw3native.h"
 
 // Library private.
-#include "src/include/glfw_occt_window.hxx"
+#include "glfw_occt_window_p.hxx"
 
 /*
     Creates an GLFW window and initializes the data members in this class to

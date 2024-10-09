@@ -21,7 +21,7 @@
 #include "GLFW/glfw3.h"
 
 // Library private.
-#include "src/include/glfw_occt_view.hxx"
+#include "glfw_occt_view_p.hxx"
 
 /* 
    ============================================================================

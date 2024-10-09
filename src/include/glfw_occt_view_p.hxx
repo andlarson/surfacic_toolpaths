@@ -6,7 +6,7 @@
 #include "V3d_View.hxx"
 
 // Library private. 
-#include "src/include/glfw_occt_window.hxx"
+#include "glfw_occt_window_p.hxx"
 
 class GlfwOcctView : protected AIS_ViewController
 {

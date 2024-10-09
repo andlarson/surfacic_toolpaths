@@ -17,10 +17,9 @@ find_package(glfw3 CONFIG REQUIRED)
 
 # All source files with relative paths. 
 set(source_files_relative_path
-    "brep_builder.cpp"
-    "brep_to_stl.cpp"
     "util.cpp"
     "tool_curve.cpp"
+    "toolpath.cpp"
     "visualization/glfw_occt_view.cpp"
     "visualization/glfw_occt_window.cpp"
    )
@@ -35,16 +34,18 @@ add_library(${PROJECT_NAME} SHARED ${source_files_absolute_path})
 
 target_include_directories(${PROJECT_NAME} 
                            PRIVATE
-                           ${CMAKE_SOURCE_DIR}
-                           INTERFACE
-                           "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-                           "$<INSTALL_INTERFACE:include>"
+                           "${CMAKE_SOURCE_DIR}/src/include"
+                           PUBLIC 
+                           $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include/>
+                           $<INSTALL_INTERFACE:include/>
                           )
 
 # All header files that are public. 
 set(public_header_files_relative_path
-    "brep_builder.hxx" 
-    "brep_to_stl.hxx"
+    "geometric_primitives.hxx"
+    "tool_curve.hxx"
+    "tool_profile.hxx"
+    "toolpath.hxx"
    )
 
 # All header files with absolute paths.

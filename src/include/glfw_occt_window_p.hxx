@@ -4,8 +4,6 @@
 #include <string>
 
 // Third party.
-
-// OCCT
 #include "Aspect_DisplayConnection.hxx"
 #include "Aspect_RenderingContext.hxx"
 #include "Aspect_Window.hxx"
