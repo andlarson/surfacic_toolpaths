@@ -1,37 +1,29 @@
+// Standard library.
+#include <vector>
+#include <limits>
+
 // Third party.
-#include "GProp_PEquation.hxx"
 #include "TColgp_HArray1OfPnt.hxx"
 #include "TColStd_HArray1OfBoolean.hxx"
 #include "TColgp_HArray1OfVec.hxx"
 #include "GeomAPI_Interpolate.hxx"
+#include "Geom_Circle.hxx"
+#include "Geom_TrimmedCurve.hxx"
+#include "GeomConvert.hxx"
 #include "Standard_Handle.hxx"
+#include "GC_MakeCircle.hxx"
+#include "GC_MakeArcOfCircle.hxx"
+#include "gp_Ax1.hxx"
+#include "gp_Vec.hxx"
+#include "gp_Dir.hxx"
+#include "gp_Pnt.hxx"
+#include "gp_Circ.hxx"
 
 // Library public.
 #include "geometric_primitives.hxx"
-#include "tool_curve.hxx"
+#include "toolpath.hxx" 
 
-// Library private.
-#include "tool_curve_p.hxx"
-#include "util_p.hxx"
-
-/*
-    *****************************************************************************
-                            ToolCurve: PImpl Forwarding
-    *****************************************************************************
-*/
-
-ToolCurve::ToolCurve()
-    : pimpl{std::make_unique<ToolCurve_Impl>()}
-{
-}
-
-ToolCurve::~ToolCurve() = default;
-
-/*
-    *****************************************************************************
-                                 InterpolatedToolCurve  
-    *****************************************************************************
-*/
+Curve::~Curve() = default;
 
 /*
     Defines a curve in space via interpolation.
@@ -47,8 +39,8 @@ ToolCurve::~ToolCurve() = default;
                       tangent must be specified for the first point that composes
                       the curve.
 */
-InterpolatedToolCurve::InterpolatedToolCurve(const std::vector<Point3D>& interpolation_points,
-                                             const std::vector<std::pair<uint64_t, Vec3D>>& tangents)
+InterpolatedCurve::InterpolatedCurve(const std::vector<Point3D>& interpolation_points,
+                                     const std::vector<std::pair<uint64_t, Vec3D>>& tangents)
 {
     // ------------------------------------------------------------------------ 
     //                      Imperfect Precondition Checking 
@@ -96,21 +88,48 @@ InterpolatedToolCurve::InterpolatedToolCurve(const std::vector<Point3D>& interpo
                                       std::numeric_limits<double>::min());
     
     interpolation.Load(*tangent_vecs, tangent_bools);
-
     interpolation.Perform();
     interpolation.IsDone();
-    Handle(Geom_BSplineCurve) interpolated_curve {interpolation.Curve()};
 
-    this->pimpl->curve = interpolated_curve; 
+    this->representation = interpolation.Curve(); 
 }
 
 /*
-    *****************************************************************************
-                                     RadialToolCurve 
-    *****************************************************************************
+    Defines an arc that is a part of a circle.
+    
+    Arguments:
+        arc_endpoints: The endpoints of the arc. These points must both lie on
+                           the ball defined by the center and the radius. 
+        center:        The centerpoint of the circle.
+        radius:        The radius of the circle.
 */
-
-RadialToolCurve::RadialToolCurve(const std::pair<Point3D, Point3D>& intersection_points,
-                                 const double radius)
+ArcOfCircle::ArcOfCircle(const std::pair<Point3D, Point3D>& arc_endpoints,
+                         const Point3D& center,
+                         const double radius)
 {
+    // In order to build the circle with the chosen API, it's necessary to
+    //     define the circle's axis. The axis lies at the center of the circle
+    //     and the z-direction of the axis defines the normal to the circle.
+    // The user passes the center point of the circle, but it's necessary to
+    //     compute the z-direction using the cross product.
+    // Warning: The normal to the resulting circle is not explicitly chosen
+    //     - it ends up being whatever the result of the cross product is.
+    const gp_Pnt arc_endpoint1 {arc_endpoints.first[0], arc_endpoints.first[1], arc_endpoints.first[2]};
+    const gp_Pnt arc_endpoint2 {arc_endpoints.second[0], arc_endpoints.second[1], arc_endpoints.second[2]};
+    const gp_Pnt centerpoint {center[0], center[1], center[2]};
+
+    gp_Vec center_to_ep1 {centerpoint, arc_endpoint1};
+    const gp_Vec center_to_ep2 {centerpoint, arc_endpoint2};
+    center_to_ep1.Cross(center_to_ep2);
+
+    const gp_Ax1 circle_axis {centerpoint, center_to_ep1};
+
+    const GC_MakeCircle circle_maker {circle_axis, radius};
+    const Handle(Geom_Circle) circle {circle_maker.Value()};
+
+    // Now use the circle to build the arc. 
+    const GC_MakeArcOfCircle arc_maker {(*circle).Circ(), arc_endpoint1, arc_endpoint2, true}; 
+    const Handle(Geom_TrimmedCurve) arc {arc_maker.Value()};
+
+    this->representation = GeomConvert::CurveToBSplineCurve(arc);
 }

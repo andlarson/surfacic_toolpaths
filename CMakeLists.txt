@@ -18,7 +18,7 @@ find_package(glfw3 CONFIG REQUIRED)
 # All source files with relative paths. 
 set(source_files_relative_path
     "util.cpp"
-    "tool_curve.cpp"
+    "curve.cpp"
     "toolpath.cpp"
     "visualization/glfw_occt_view.cpp"
     "visualization/glfw_occt_window.cpp"
@@ -43,8 +43,6 @@ target_include_directories(${PROJECT_NAME}
 # All header files that are public. 
 set(public_header_files_relative_path
     "geometric_primitives.hxx"
-    "tool_curve.hxx"
-    "tool_profile.hxx"
     "toolpath.hxx"
    )
 

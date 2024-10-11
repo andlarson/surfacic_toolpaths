@@ -10,8 +10,6 @@
 #include "gp.hxx"
 #include "gp_Dir.hxx"
 #include "Geom_Plane.hxx"
-#include "Geom_RectangularTrimmedSurface.hxx"
-#include "GeomLib_Tool.hxx"
 #include "BRepBuilderAPI_MakeFace.hxx"
 #include "BRepBuilderAPI_MakeEdge.hxx"
 #include "BRepBuilderAPI_MakeWire.hxx"
@@ -25,22 +23,16 @@
 #include "TopoDS_Shape.hxx"
 #include "TopoDS_Wire.hxx"
 #include "TopoDS.hxx"
-#include "TopoDS_HShape.hxx"
 #include "IMeshTools_Parameters.hxx"
 #include "TopExp_Explorer.hxx"
 #include "Poly_Triangulation.hxx"
 
 // Library public.
 #include "toolpath.hxx"
-#include "tool_curve.hxx"
-#include "tool_profile.hxx"
-#include "geometric_primitives.hxx"
 
 // Library private.
 #include "util_p.hxx"
-#include "tool_curve_p.hxx"
 #include "glfw_occt_view_p.hxx"
-
 
 /* 
    ****************************************************************************
@@ -48,13 +40,14 @@
    ****************************************************************************
 */ 
 
-static Handle(Geom_RectangularTrimmedSurface) construct_rect_trimmed_surface(gp_Vec normal, 
-                                                                     gp_Pnt bottom_point,
-                                                                     double width, 
-                                                                     double
-                                                                     height);
+static TopoDS_Face construct_rect_trimmed_surface(gp_Vec normal, gp_Pnt
+                                                  bottom_point, double width,
+                                                  double height);
 
 static gp_Dir compute_average_vec(const std::vector<gp_Vec>& vecs);
+
+/* **************************************************************************** */
+
 
 /* 
    ****************************************************************************
@@ -74,10 +67,9 @@ static gp_Dir compute_average_vec(const std::vector<gp_Vec>& vecs);
         width:        Width of the face. 
         height:       Height of the face.
 */
-static Handle(Geom_RectangularTrimmedSurface) construct_rect_trimmed_surface(gp_Vec normal, 
-                                                                             const gp_Pnt bottom_point,
-                                                                             const double width, 
-                                                                             const double height)
+static TopoDS_Face construct_rect_trimmed_surface(gp_Vec normal, const gp_Pnt
+                                                  bottom_point, const double
+                                                  width, const double height)
 {
     // An infinite plane. 
     Handle(Geom_Plane) plane {new Geom_Plane(bottom_point, normal)};
@@ -105,6 +97,41 @@ static Handle(Geom_RectangularTrimmedSurface) construct_rect_trimmed_surface(gp_
               p3.Z() - height * v2.Z());
     std::array<gp_Pnt, VERTICES_PER_RECTANGLE> points {p1, p2, p3, p4};
 
+    std::vector<BRepBuilderAPI_MakeEdge> face_edges;
+    for (auto it {points.begin()}; it != points.end(); ++it)
+    {
+        if (it == points.end() - 1)
+        {
+            BRepBuilderAPI_MakeEdge edge {*it, *(points.begin())};
+            assert(edge.IsDone());
+            face_edges.push_back(edge);
+        }
+        else
+        {
+            BRepBuilderAPI_MakeEdge edge {*it, *(it + 1)};
+            assert(edge.IsDone());
+            face_edges.push_back(edge);
+        }
+    }
+
+    BRepBuilderAPI_MakeWire wire_for_face;
+    for (auto it {face_edges.begin()}; it != face_edges.end(); ++it)
+    {
+        wire_for_face.Add(*it);
+        assert(wire_for_face.IsDone());
+    }
+
+    BRepBuilderAPI_MakeFace face {plane, wire_for_face};
+    assert(face.IsDone());
+    
+    /* 
+    // Ideally it would be possible to construct the face as a geometry, and
+    //     convert it to a topology exactly when necessary. Turns out that's not
+    //     so easy. The code below attempts to make a face via a rectangular
+    //     trimmed surface. This isn't viable because (as best I understand it)
+    //     rectangular trimmed surfaces only permit rectangles that are
+    //     axis-aligned to be represented. This isn't sufficiently general.
+
     // Compute the parameterization at the four points. 
     std::array<std::pair<double, double>, VERTICES_PER_RECTANGLE> point_parameters;
     for (int i {0}; i < points.size(); ++i)
@@ -123,14 +150,10 @@ static Handle(Geom_RectangularTrimmedSurface) construct_rect_trimmed_surface(gp_
     std::array<double, 2> u_values; 
     std::array<double, 2> v_values; 
 
-    // DEBUG!?
-    /*
     Handle(Geom_RectangularTrimmedSurface) rect_trimmed_surface {new Geom_RectangularTrimmedSurface(plane, )}
     */
-    Handle(Geom_RectangularTrimmedSurface) test {new
-    Geom_RectangularTrimmedSurface(plane, 5, -.1, -.5, 2, true, true)};
 
-    return test;
+    return face.Face();
 }
 
 static gp_Dir compute_average_vec(const std::vector<gp_Vec>& vecs)
@@ -147,19 +170,19 @@ static gp_Dir compute_average_vec(const std::vector<gp_Vec>& vecs)
     return res;
 }
 
-/* 
-   ****************************************************************************
-                                    ToolPath 
-   ****************************************************************************
-*/ 
+/* **************************************************************************** */
 
 /*
     Defines a toolpath. A toolpath is just a tool profile swept through space. 
 
     This function assumes that:
         (1) The rotational axis of symmetry of the tool profile points in the +z
-                direction along the entire curve. The normal to the tool profile
-                is parallel to the tangent of the curve along the entire curve.
+                direction at the beginning of the curve. The angle between the
+                tool profile and the curve is maintained along the entirety of
+                the curve.
+            This does not mean that the rotational axis of symmetry of the tool
+                points in the +z direction along the entirety of the curve.
+            TODO: Not clear to me how the angle evolves along the curve.
         (2) The curve is G1 continuous.
         (3) The curve describes the path taken in space by the center point of
                 the bottom of the tool.
@@ -173,11 +196,11 @@ static gp_Dir compute_average_vec(const std::vector<gp_Vec>& vecs)
         display_result: Causes windows to be created showing the results of
                             toolpath creation. 
 */
-ToolPath::ToolPath(const ToolCurve& curve,
+ToolPath::ToolPath(const Curve& curve,
                    const CylindricalTool& profile,
                    const bool display_result)
 {
-    const Handle(Geom_BSplineCurve) bspline {curve.pimpl->curve};
+    const Handle(Geom_BSplineCurve) bspline {curve.representation};
 
     // Build topology from the geometry.
     BRepBuilderAPI_MakeEdge edge_topology_builder {bspline};
@@ -199,23 +222,8 @@ ToolPath::ToolPath(const ToolCurve& curve,
     gp_Pnt unused;
     bspline->D1(start_parameter, unused, tangent);
 
-    const auto profile_surface {construct_rect_trimmed_surface(tangent, start, profile.radius * 2, profile.height)};
+    const auto profile_topology {construct_rect_trimmed_surface(tangent, start, profile.radius * 2, profile.height)};
     
-    // Extract the parameteric bounds of the rectangle.
-    std::array<double, RECTANGLE_PARAMETRIC_BND_CNT> parameters;
-    profile_surface->Bounds(parameters[0], parameters[1], parameters[2],
-                            parameters[3]);
-
-    // Build topology from the geometry. 
-    const BRepBuilderAPI_MakeFace face_topology_builder {profile_surface,
-                                                         parameters[0],
-                                                         parameters[1],
-                                                         parameters[2],
-                                                         parameters[3],
-                                                         FP_EQUALS_TOLERANCE};
-    assert(face_topology_builder.IsDone());
-    const TopoDS_Face profile_topology {face_topology_builder.Face()};
-
     if (display_result)
     {
         std::vector<TopoDS_Shape> shapes {profile_topology, curve_wire_topology};

@@ -1,12 +1,6 @@
 // Library private.
 #include "util_p.hxx"
 
-/* 
-   ****************************************************************************
-                           General Utility Functions 
-   **************************************************************************** 
-*/ 
-
 /*
     Dumb floating point comparison.
     Warning: Be very careful. The correct way to compare floating point numbers
