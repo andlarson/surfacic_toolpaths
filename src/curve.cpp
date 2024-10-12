@@ -100,6 +100,13 @@ InterpolatedCurve::InterpolatedCurve(const std::vector<Point3D>& interpolation_p
     Arguments:
         arc_endpoints: The endpoints of the arc. These points must both lie on
                            the ball defined by the center and the radius. 
+                           Two endpoints, a center, and a radius don't fully
+                           specify the arc. They specify two possible arcs. The
+                           arc produced by this implementation depends on the
+                           ordering of the arc endpoints passed to it.
+                       Note: This algorithm is degenerate when the two arc
+                           endpoints form a semicircle. Don't attempt to do
+                           this.
         center:        The centerpoint of the circle.
         radius:        The radius of the circle.
 */

@@ -9,19 +9,23 @@
 #include "gp_Vec.hxx"
 #include "gp.hxx"
 #include "gp_Dir.hxx"
+#include "gp_Ax2.hxx"
 #include "Geom_Plane.hxx"
 #include "BRepBuilderAPI_MakeFace.hxx"
 #include "BRepBuilderAPI_MakeEdge.hxx"
 #include "BRepBuilderAPI_MakeWire.hxx"
 #include "BRepOffsetAPI_MakePipe.hxx"
+#include "BRepPrimAPI_MakeCylinder.hxx"
 #include "BRepMesh_IncrementalMesh.hxx"
 #include "BRep_Tool.hxx"
 #include "BRepTools.hxx"
 #include "BRepLib_ToolTriangulatedShape.hxx"
+#include "BRepPrimAPI_MakeRevol.hxx"
 #include "TopoDS_Edge.hxx"
 #include "TopoDS_Face.hxx"
 #include "TopoDS_Shape.hxx"
 #include "TopoDS_Wire.hxx"
+#include "TopoDS_Solid.hxx"
 #include "TopoDS.hxx"
 #include "IMeshTools_Parameters.hxx"
 #include "TopExp_Explorer.hxx"
@@ -218,11 +222,11 @@ ToolPath::ToolPath(const Curve& curve,
     // Figure out the vector tangent to the curve at the start point of the
     //     curve.
     const double start_parameter {bspline->FirstParameter()};
-    gp_Vec tangent;
+    gp_Vec tangent_start;
     gp_Pnt unused;
-    bspline->D1(start_parameter, unused, tangent);
+    bspline->D1(start_parameter, unused, tangent_start);
 
-    const auto profile_topology {construct_rect_trimmed_surface(tangent, start, profile.radius * 2, profile.height)};
+    const auto profile_topology {construct_rect_trimmed_surface(tangent_start, start, profile.radius * 2, profile.height)};
     
     if (display_result)
     {
@@ -233,26 +237,64 @@ ToolPath::ToolPath(const Curve& curve,
     // Do the sweep.
     const BRepOffsetAPI_MakePipe pipe_topology_builder {curve_wire_topology, profile_topology};
     const TopoDS_Shape pipe_topology {pipe_topology_builder.Pipe().Shape()}; 
+    // TODO: Check that the pipe topology is closed. Unfortunately, the
+    //     IsClosed() member function returns false even when the topology is
+    //     closed. Maybe BRepOffsetAPI_MakePipe doesn't update the Closed flag?
+    //     Also, checking if the topology is a solid via TopoDS's ShapeType
+    //     member function is also ineffective.
+    
+    /*
+    // DEBUG!?: Extract and plot the tangents at the start and endpoints of the
+    //     BSpline.
+    gp_Pnt start_point1 {start}, start_point2 {start}, end_point1 {end}, end_point2 {end};
+    const double end_parameter {bspline->LastParameter()};
+    gp_Vec tangent_end;
+    bspline->D1(end_parameter, unused, tangent_end);
+    tangent_start.Normalize();
+    start_point1.Translate(tangent_start);
+    // start_point2.Translate(-tangent_start);
+    BRepBuilderAPI_MakeEdge start_tangent_edge {start_point1, start_point2};
+    assert(start_tangent_edge.IsDone());
 
-    /* TODO: Add Caps.
+    tangent_end.Normalize();
+    end_point1.Translate(tangent_end);
+    // end_point2.Translate(-tangent_end);
+    BRepBuilderAPI_MakeEdge end_tangent_edge {end_point1, end_point2};
+    assert(end_tangent_edge.IsDone());
 
-        // Build the cylinders that act as the start and end caps of the tool path. 
-        // These cylinders have rotation axii of symmetry that point in the +z 
-        //     direction.
-        TopoDS_Shape start_cap {make_cylinder(curve.points_to_interpolate->First(), 
-                                              tool.radius, 
-                                              tool.height)};
-        TopoDS_Shape end_cap {make_cylinder(curve.points_to_interpolate->Last(), 
-                                            tool.radius, 
-                                            tool.height)};
-        
-        // Perform a boolean union between the sweep and the start and end caps of
-        //     the tool path. 
-        BRepAlgoAPI_Fuse res1(pipe, start_cap);
-        assert(res1.HasErrors() == false);
-        BRepAlgoAPI_Fuse res2(res1.Shape(), end_cap);
-        assert(res2.HasErrors() == false);
+    std::vector<TopoDS_Shape> shapes {start_tangent_edge.Edge(), end_tangent_edge.Edge()};
+    show_shapes(shapes); 
     */
+
+    // Build the cylinders that act as the start and end caps of the tool path. 
+    // The axii of rotation of the cylinders is hardcoded to be in the +Z
+    //     direction. For now, this is imperfect but sufficient.
+    // The axii of rotation should not necessarily be in the +Z direction. To
+    //     make this work for more general curves, it would be necessary to figure
+    //     out the correct axii of rotation based the topology produced by the
+    //     sweep. One approach would be to query every face part of the sweep 
+    //     topology, find the faces that intersect the start and end points,
+    //     and use the geometry of the faces (their shape and normal) to compute
+    //     the correct axis of rotation and the correct sweep angles.
+    gp_Ax2 start_point_axis {};
+    start_point_axis.SetLocation(start);
+    BRepPrimAPI_MakeCylinder start_cap_topology_builder {start_point_axis, profile.radius, profile.height};
+
+    gp_Ax2 end_point_axis {};
+    end_point_axis.SetLocation(end);
+    BRepPrimAPI_MakeCylinder end_cap_topology_builder {end_point_axis, profile.radius, profile.height};
+
+    TopoDS_Shape start_cap {make_cylinder(curve.points_to_interpolate->First(), 
+                                          tool.radius, 
+                                          tool.height)};
+    TopoDS_Shape end_cap {make_cylinder(curve.points_to_interpolate->Last(), 
+                                        tool.radius, 
+                                        tool.height)};
+
+    BRepAlgoAPI_Fuse res1(pipe, start_cap);
+    assert(!res1.HasErrors());
+    BRepAlgoAPI_Fuse res2(res1.Shape(), end_cap);
+    assert(!res2.HasErrors());
 
     if (display_result)
     {
