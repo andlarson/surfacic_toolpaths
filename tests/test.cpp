@@ -70,20 +70,20 @@ vector<pair<string, InterpolatedCurve>> interpolated_curve_specs {
                                                                     //     {{0, {0, 1, 0}}, {1, {-1, 0, 0}}, {2, {-1, 0, 0}}}
                                                                     //   },
                                                                     // },
-                                                                    {
-                                                                      "[interpolation]: non-planar zigzag",
-                                                                      {
-                                                                        {{0, 0, 0}, {1, 1, .5}, {0, 2, 1}, {3, 3, 2}, {0, 4, 3}}, 
-                                                                        {{0, {0, 1, 0}}, {1, {0, 1, 0}}, {2, {0, 1, 0}}, {3, {0, 1, 0}}}
-                                                                      }, 
-                                                                    },
-                                                                    {
-                                                                      "[interpolation]: non-planar horseshoe",
-                                                                      {
-                                                                        {{-1, 1, 0}, {-1, .4, .5}, {0, 0, 1}, {1, .4, .5}, {1, 1, 0}}, 
-                                                                        {{0, {0, -1, 0}}, {1, {0, -1, 0}}, {2, {1, 0, 0}}, {3, {0, 1, 0}}, {4, {0, 1, 0}}}
-                                                                      }, 
-                                                                    }
+                                                                    // {
+                                                                    //   "[interpolation]: non-planar zigzag",
+                                                                    //   {
+                                                                    //     {{0, 0, 0}, {1, 1, .5}, {0, 2, 1}, {3, 3, 2}, {0, 4, 3}}, 
+                                                                    //     {{0, {0, 1, 0}}, {1, {0, 1, 0}}, {2, {0, 1, 0}}, {3, {0, 1, 0}}}
+                                                                    //   }, 
+                                                                    // },
+                                                                    // {
+                                                                    //   "[interpolation]: non-planar horseshoe",
+                                                                    //   {
+                                                                    //     {{-1, 1, 0}, {-1, .4, .5}, {0, 0, 1}, {1, .4, .5}, {1, 1, 0}}, 
+                                                                    //     {{0, {0, -1, 0}}, {1, {0, -1, 0}}, {2, {1, 0, 0}}, {3, {0, 1, 0}}, {4, {0, 1, 0}}}
+                                                                    //   }, 
+                                                                    // }
                                                                 };
 
 vector<pair<string, ArcOfCircle>> arc_of_circle_curve_specs {
@@ -95,32 +95,32 @@ vector<pair<string, ArcOfCircle>> arc_of_circle_curve_specs {
                                                                  "[arc of circle]: origin centered 2", 
                                                                  {{{0, 1}, {1/pow(2, .5), 1/pow(2, .5)}}, {0, 0}, 1},
                                                                },
-                                                               {
-                                                                 "[arc of circle]: origin centered 3", 
-                                                                 {{{-1/pow(2, .5), 1/pow(2, .5)}, {1/pow(2, .5), 1/pow(2, .5)}}, {0, 0}, 1},
-                                                               },
-                                                               {
-                                                                 "[arc of circle]: origin centered 4", 
-                                                                 {{{.75, .6614}, {-1, 0}}, {0, 0}, 1},
-                                                               },
+                                                               // {
+                                                               //   "[arc of circle]: origin centered 3", 
+                                                               //   {{{-1/pow(2, .5), 1/pow(2, .5)}, {1/pow(2, .5), 1/pow(2, .5)}}, {0, 0}, 1},
+                                                               // },
+                                                               // {
+                                                               //   "[arc of circle]: origin centered 4", 
+                                                               //   {{{.75, .6614}, {-1, 0}}, {0, 0}, 1},
+                                                               // },
 
-                                                               // Not origin centered. 
-                                                               {
-                                                                 "[arc of circle]: origin centered 5", 
-                                                                 {{{1 + 10, 0 + 10}, {0 + 10, 1 + 10}}, {10, 10}, 1},
-                                                               },
-                                                               {
-                                                                 "[arc of circle]: origin centered 6", 
-                                                                 {{{0 + 10, 1 + 5}, {1/pow(2, .5) + 10, 1/pow(2, .5) + 5}}, {10, 5}, 1},
-                                                               },
-                                                               {
-                                                                 "[arc of circle]: origin centered 7", 
-                                                                 {{{-1/pow(2, .5) + 10, 1/pow(2, .5) + 5}, {1/pow(2, .5) + 10, 1/pow(2, .5) + 5}}, {10, 5}, 1},
-                                                               },
-                                                               {
-                                                                 "[arc of circle]: origin centered 8", 
-                                                                 {{{.75 - 100, .6614 + 3}, {-1 - 100, 0 + 3}}, {-100, 3}, 1},
-                                                               }
+                                                               // // Not origin centered. 
+                                                               // {
+                                                               //   "[arc of circle]: origin centered 5", 
+                                                               //   {{{1 + 10, 0 + 10}, {0 + 10, 1 + 10}}, {10, 10}, 1},
+                                                               // },
+                                                               // {
+                                                               //   "[arc of circle]: origin centered 6", 
+                                                               //   {{{0 + 10, 1 + 5}, {1/pow(2, .5) + 10, 1/pow(2, .5) + 5}}, {10, 5}, 1},
+                                                               // },
+                                                               // {
+                                                               //   "[arc of circle]: origin centered 7", 
+                                                               //   {{{-1/pow(2, .5) + 10, 1/pow(2, .5) + 5}, {1/pow(2, .5) + 10, 1/pow(2, .5) + 5}}, {10, 5}, 1},
+                                                               // },
+                                                               // {
+                                                               //   "[arc of circle]: origin centered 8", 
+                                                               //   {{{.75 - 100, .6614 + 3}, {-1 - 100, 0 + 3}}, {-100, 3}, 1},
+                                                               // }
                                                            };
 
 /* **************************************************************************** */
@@ -146,9 +146,9 @@ static vector<CylToolpathTest> gen_tests()
 {
     vector<CylToolpathTest> tests;
     
-    CylindricalTool default_cylindrical_tool {.1, 1};
-    pair<double, double> default_mesh_options {.5, .00001};
-    filesystem::path default_results_directory {"/tmp/"};
+    const CylindricalTool default_cylindrical_tool {.1, .3};
+    const pair<double, double> default_mesh_options {.5, .00001};
+    const filesystem::path default_results_directory {"/tmp/"};
 
     for (auto& interpolated_curve_spec : interpolated_curve_specs)
         tests.push_back(

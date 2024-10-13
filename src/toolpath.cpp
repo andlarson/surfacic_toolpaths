@@ -15,17 +15,16 @@
 #include "BRepBuilderAPI_MakeEdge.hxx"
 #include "BRepBuilderAPI_MakeWire.hxx"
 #include "BRepOffsetAPI_MakePipe.hxx"
+#include "BRepAlgoAPI_Fuse.hxx"
 #include "BRepPrimAPI_MakeCylinder.hxx"
 #include "BRepMesh_IncrementalMesh.hxx"
 #include "BRep_Tool.hxx"
 #include "BRepTools.hxx"
 #include "BRepLib_ToolTriangulatedShape.hxx"
-#include "BRepPrimAPI_MakeRevol.hxx"
 #include "TopoDS_Edge.hxx"
 #include "TopoDS_Face.hxx"
 #include "TopoDS_Shape.hxx"
 #include "TopoDS_Wire.hxx"
-#include "TopoDS_Solid.hxx"
 #include "TopoDS.hxx"
 #include "IMeshTools_Parameters.hxx"
 #include "TopExp_Explorer.hxx"
@@ -243,29 +242,6 @@ ToolPath::ToolPath(const Curve& curve,
     //     Also, checking if the topology is a solid via TopoDS's ShapeType
     //     member function is also ineffective.
     
-    /*
-    // DEBUG!?: Extract and plot the tangents at the start and endpoints of the
-    //     BSpline.
-    gp_Pnt start_point1 {start}, start_point2 {start}, end_point1 {end}, end_point2 {end};
-    const double end_parameter {bspline->LastParameter()};
-    gp_Vec tangent_end;
-    bspline->D1(end_parameter, unused, tangent_end);
-    tangent_start.Normalize();
-    start_point1.Translate(tangent_start);
-    // start_point2.Translate(-tangent_start);
-    BRepBuilderAPI_MakeEdge start_tangent_edge {start_point1, start_point2};
-    assert(start_tangent_edge.IsDone());
-
-    tangent_end.Normalize();
-    end_point1.Translate(tangent_end);
-    // end_point2.Translate(-tangent_end);
-    BRepBuilderAPI_MakeEdge end_tangent_edge {end_point1, end_point2};
-    assert(end_tangent_edge.IsDone());
-
-    std::vector<TopoDS_Shape> shapes {start_tangent_edge.Edge(), end_tangent_edge.Edge()};
-    show_shapes(shapes); 
-    */
-
     // Build the cylinders that act as the start and end caps of the tool path. 
     // The axii of rotation of the cylinders is hardcoded to be in the +Z
     //     direction. For now, this is imperfect but sufficient.
@@ -279,30 +255,25 @@ ToolPath::ToolPath(const Curve& curve,
     gp_Ax2 start_point_axis {};
     start_point_axis.SetLocation(start);
     BRepPrimAPI_MakeCylinder start_cap_topology_builder {start_point_axis, profile.radius, profile.height};
+    TopoDS_Shape start_cap {start_cap_topology_builder.Shape()};
 
     gp_Ax2 end_point_axis {};
     end_point_axis.SetLocation(end);
     BRepPrimAPI_MakeCylinder end_cap_topology_builder {end_point_axis, profile.radius, profile.height};
+    TopoDS_Shape end_cap {end_cap_topology_builder.Shape()};
 
-    TopoDS_Shape start_cap {make_cylinder(curve.points_to_interpolate->First(), 
-                                          tool.radius, 
-                                          tool.height)};
-    TopoDS_Shape end_cap {make_cylinder(curve.points_to_interpolate->Last(), 
-                                        tool.radius, 
-                                        tool.height)};
-
-    BRepAlgoAPI_Fuse res1(pipe, start_cap);
+    BRepAlgoAPI_Fuse res1 {pipe_topology, start_cap};
     assert(!res1.HasErrors());
-    BRepAlgoAPI_Fuse res2(res1.Shape(), end_cap);
+    BRepAlgoAPI_Fuse res2 {res1.Shape(), end_cap};
     assert(!res2.HasErrors());
 
     if (display_result)
     {
-        std::vector<TopoDS_Shape> shapes {pipe_topology};
+        std::vector<TopoDS_Shape> shapes {res2};
         show_shapes(shapes);     
     }
 
-    this->tool_path = pipe_topology;
+    this->tool_path = res2;
 }
 
 /*
@@ -333,6 +304,9 @@ void ToolPath::mesh_surface(const double angle,
     mesh_params.Deflection = deflection; 
     mesh_params.InParallel = true;
 
+    // Seems to produce better triangles.
+    mesh_params.MeshAlgo = IMeshTools_MeshAlgoType_Delabella;
+
     BRepMesh_IncrementalMesh mesher;
     mesher.SetShape(this->tool_path);
     mesher.ChangeParameters() = mesh_params;
@@ -344,7 +318,7 @@ void ToolPath::mesh_surface(const double angle,
         TopLoc_Location loc;
         const Handle(Poly_Triangulation) poly_tri {BRep_Tool::Triangulation(face, loc)};
         
-        // If a face could not be triangulated, something has gone wrong during meshing. 
+        // If a face could not be triangulated, something has gone wrong.
         assert(!poly_tri.IsNull());
         
         BRepLib_ToolTriangulatedShape::ComputeNormals(face, poly_tri);
@@ -387,7 +361,7 @@ void ToolPath::shape_to_stl(const std::string solid_name,
 
         for (int tri_it {1}; tri_it <= poly_tri->NbTriangles(); ++tri_it)
         {
-            const Poly_Triangle& tri = poly_tri->Triangle(tri_it);
+            const Poly_Triangle& tri {poly_tri->Triangle(tri_it)};
             
             // Average the vertex normals to compute the face normal. 
             int v1_idx, v2_idx, v3_idx;
