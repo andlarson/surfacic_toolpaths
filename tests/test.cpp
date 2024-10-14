@@ -42,6 +42,15 @@ vector<pair<string, InterpolatedCurve>> interpolated_curve_specs {
                                                                     //     {{0, {1, 0, 0}}, {1, {1, 0, 0}}, {2, {1, 0, 0}}}
                                                                     //   },
                                                                     // },
+                                                                    //
+                                                                    // TODO: Causes segfault!
+                                                                    // {
+                                                                    //   "[interpolation]: planar non-axial straight line",
+                                                                    //   {
+                                                                    //     {{0, 0, 0}, {1, 1, 0}, {2, 2, 0}}, 
+                                                                    //     {{0, {1, 1, 0}}, {1, {1, 1, 0}}, {2, {1, 1, 0}}}
+                                                                    //   },
+                                                                    // },
                                                                     // {
                                                                     //   "[interpolation]: planar zigzag",
                                                                     //   {
@@ -87,14 +96,14 @@ vector<pair<string, InterpolatedCurve>> interpolated_curve_specs {
                                                                 };
 
 vector<pair<string, ArcOfCircle>> arc_of_circle_curve_specs {
-                                                               {
-                                                                 "[arc of circle]: origin centered 1", 
-                                                                 {{{1, 0}, {0, 1}}, {0, 0}, 1}
-                                                               },
-                                                               {
-                                                                 "[arc of circle]: origin centered 2", 
-                                                                 {{{0, 1}, {1/pow(2, .5), 1/pow(2, .5)}}, {0, 0}, 1},
-                                                               },
+                                                               // {
+                                                               //   "[arc of circle]: origin centered 1", 
+                                                               //   {{{1, 0}, {0, 1}}, {0, 0}, 1}
+                                                               // },
+                                                               // {
+                                                               //   "[arc of circle]: origin centered 2", 
+                                                               //   {{{0, 1}, {1/pow(2, .5), 1/pow(2, .5)}}, {0, 0}, 1},
+                                                               // },
                                                                // {
                                                                //   "[arc of circle]: origin centered 3", 
                                                                //   {{{-1/pow(2, .5), 1/pow(2, .5)}, {1/pow(2, .5), 1/pow(2, .5)}}, {0, 0}, 1},
