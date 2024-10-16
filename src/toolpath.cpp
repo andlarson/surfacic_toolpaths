@@ -219,7 +219,180 @@ static TopoDS_Shape build_vertical_cylinder(const gp_Pnt& loc,
 /* **************************************************************************** */
 
 /*
-    Defines a toolpath. A toolpath is just a tool profile swept through space. 
+    See callees for documentation.
+*/
+ToolPath::ToolPath(const Curve& curve,
+                   const CylindricalTool& profile,
+                   const bool display)
+{
+    TopoDS_Shape extrusion {extrude_along_curve(curve, profile, display)};
+    add_shape(extrusion);
+}
+
+/*
+    See callees for documentation.
+*/
+ToolPath::ToolPath(const Line& line,
+                   const CylindricalTool& profile,
+                   const bool display)
+{
+    TopoDS_Shape extrusion {extrude_along_line(line, profile, display)};
+    add_shape(extrusion);
+}
+
+/*
+    See callees for documentation.
+*/
+ToolPath::ToolPath(const std::pair<Curve&, Line&> compound,
+                   const CylindricalTool& profile,
+                   const bool display)
+{
+    TopoDS_Shape curve_extrusion {extrude_along_curve(compound.first, profile, display)};
+    add_shape(curve_extrusion);
+
+    TopoDS_Shape line_extrusion {extrude_along_line(compound.second, profile, display)};
+    add_shape(line_extrusion);
+}
+
+/*
+    Generates a surface mesh on the toolpath topology.
+
+    If the input topology is weird, then this function can fail/take a long
+        time. There is no formal definition of weird and therefore this
+        function cannot test for weirdness, so to be safe, you should visualize
+        the topology you are trying to mesh before calling this function.
+        For example, if the topology contains self intersections, mesh
+        generation may not fail, but it will take tons of time.
+    
+    Arguments:
+        angle:      Maximum angular deflection allowed when generating surface mesh. 
+        deflection: Maximum linear deflection allowed when generating surface mesh.
+    
+    Return:
+        None.
+*/
+void ToolPath::mesh_surface(const double angle, 
+                            const double deflection)
+{
+    // Get rid of any previous mesh associated with this toolpath.
+    BRepTools::Clean(this->toolpath_shape_union, true);
+
+    IMeshTools_Parameters mesh_params;
+    mesh_params.Angle = angle;
+    mesh_params.Deflection = deflection; 
+    mesh_params.InParallel = true;
+
+    // Seems to produce better triangles.
+    // mesh_params.MeshAlgo = IMeshTools_MeshAlgoType_Delabella;
+
+    BRepMesh_IncrementalMesh mesher;
+    mesher.SetShape(this->toolpath_shape_union);
+    mesher.ChangeParameters() = mesh_params;
+    mesher.Perform();
+
+    for (TopExp_Explorer face_iter {this->toolpath_shape_union, TopAbs_FACE}; face_iter.More(); face_iter.Next())
+    {
+        const TopoDS_Face face {TopoDS::Face(face_iter.Current())};
+        TopLoc_Location loc;
+        const Handle(Poly_Triangulation) poly_tri {BRep_Tool::Triangulation(face, loc)};
+        
+        // If a face could not be triangulated, something has gone wrong.
+        assert(!poly_tri.IsNull());
+        
+        BRepLib_ToolTriangulatedShape::ComputeNormals(face, poly_tri);
+    }
+}
+
+/*
+    Writes the meshed toolpath to a file. Even if the file already exists, it is 
+        completely overwritten. Per-face normals are included in the .stl file.
+        Each per-face normal is computed by averaging whatever vertex normals
+        are associated with the vertices of the face.
+    See https://www.fabbers.com/tech/STL_Format for the closest thing to a
+        standardization of the STL format.
+
+    Assumes:
+        (1) The caller is OK with the file being overwritten if it already exists.
+        (2) The toolpath has already been meshed.
+        
+    Arguments:
+        solid_name: The desired name of the solid in the .stl file.
+        file_path:  Absolute path to the file to write to. 
+    
+    Returns:
+        None.
+*/
+void ToolPath::shape_to_stl(const std::string solid_name, 
+                            const std::string filepath) const
+{
+    std::ofstream f {filepath};  
+
+    // Ensure that ample precision is used when writing to the .stl. 
+    f.precision(FP_WRITE_PRECISION);
+
+    assert(f.good());
+
+    f << "solid " << solid_name << std::endl;
+
+    for (TopExp_Explorer face_it {this->toolpath_shape_union, TopAbs_FACE}; face_it.More(); face_it.Next())
+    {
+        const TopoDS_Face face {TopoDS::Face(face_it.Current())};
+        TopLoc_Location loc;
+        const Handle(Poly_Triangulation) poly_tri {BRep_Tool::Triangulation(face, loc)};
+        
+        assert(!poly_tri.IsNull());
+
+        for (int tri_it {1}; tri_it <= poly_tri->NbTriangles(); ++tri_it)
+        {
+            const Poly_Triangle& tri {poly_tri->Triangle(tri_it)};
+            
+            // Average the vertex normals to compute the face normal. 
+            int v1_idx, v2_idx, v3_idx;
+            tri.Get(v1_idx, v2_idx, v3_idx);
+            const gp_Vec face_normal {compute_average_vec({poly_tri->Normal(v1_idx), poly_tri->Normal(v2_idx), poly_tri->Normal(v3_idx)})};
+
+            // Write the face normals.
+            f << FOUR_SPACES << "facet normal " << face_normal.X() << " " <<  face_normal.Y() << " " << face_normal.Z() << std::endl;
+            
+            // Write the vertices.
+            f << EIGHT_SPACES << "outer loop" << std::endl;
+            for (int i {1}; i <= VERTICES_PER_TRIANGLE; ++i)
+            {
+                f << TWELVE_SPACES << "vertex " << (poly_tri->Node(tri(i))).X() << " " << (poly_tri->Node(tri(i))).Y() << " " << (poly_tri->Node(tri(i))).Z() << std::endl;
+            }
+            f << EIGHT_SPACES << "endloop" << std::endl;
+            f << FOUR_SPACES << "endfacet" << std::endl;
+        }
+    }
+
+    f << "endsolid " << solid_name;
+}
+
+/*
+    Adds a shape to the shape compound that makes up this toolpath.
+
+    Arguments:
+        s: The shape to add to the compound.
+    
+    Returns:
+        None.
+*/
+void ToolPath::add_shape(const TopoDS_Shape& s)
+{
+    if (this->toolpath_shape_union.IsNull())
+    {
+        this->toolpath_shape_union = s;
+    }
+    else
+    {
+        BRepAlgoAPI_Fuse toolpath_union {this->toolpath_shape_union, s};
+        assert(!toolpath_union.HasErrors());
+        this->toolpath_shape_union = toolpath_union.Shape();
+    }
+}
+
+/*
+    Sweeps a profile along a curve.
     
     Requires that:
         (1) The tangent at the first point on the curve lies in the XY-plane. 
@@ -254,15 +427,18 @@ static TopoDS_Shape build_vertical_cylinder(const gp_Pnt& loc,
             function is also ineffective.
 
     Arguments:
-        curve:          Curve describing the path that the center point of the
-                            bottom face of the tool takes in space.
-        profile:        The cross section of the tool.
-        display_result: Causes windows to be created showing the results of
-                            toolpath creation. 
+        curve:   Curve describing the path that the center point of the
+                     bottom face of the tool takes in space.
+        profile: The cross section of the tool.
+        display: Causes windows to be created showing the results of
+                     toolpath creation. 
+    
+    Return:
+        The shape resulting from extruding the profile along the curve.
 */
-ToolPath::ToolPath(const Curve& curve,
-                   const CylindricalTool& profile,
-                   const bool display_result)
+TopoDS_Shape ToolPath::extrude_along_curve(const Curve& curve,
+                                           const CylindricalTool& profile,
+                                           const bool display) const
 {
     const Handle(Geom_BSplineCurve) bspline {curve.representation};
 
@@ -291,7 +467,7 @@ ToolPath::ToolPath(const Curve& curve,
 
     const TopoDS_Face profile_topology {construct_rect_face(tangent_start, start, profile.radius * 2, profile.height)};
     
-    if (display_result)
+    if (display)
     {
         std::vector<TopoDS_Shape> shapes {profile_topology, curve_wire_topology};
         show_shapes(shapes); 
@@ -306,22 +482,22 @@ ToolPath::ToolPath(const Curve& curve,
     TopoDS_Shape start_cap {build_vertical_cylinder(start, profile.radius, profile.height)};
     TopoDS_Shape end_cap {build_vertical_cylinder(end, profile.radius, profile.height)};
 
-    BRepAlgoAPI_Fuse res1 {pipe_topology, start_cap};
-    assert(!res1.HasErrors());
-    BRepAlgoAPI_Fuse res2 {res1.Shape(), end_cap};
-    assert(!res2.HasErrors());
+    BRepAlgoAPI_Fuse pipe_topology_with_start_cap {pipe_topology, start_cap};
+    assert(!pipe_topology_with_start_cap.HasErrors());
+    BRepAlgoAPI_Fuse pipe_topology_with_both_caps {pipe_topology_with_start_cap.Shape(), end_cap};
+    assert(!pipe_topology_with_both_caps.HasErrors());
 
-    if (display_result)
+    if (display)
     {
-        std::vector<TopoDS_Shape> shapes {res2};
+        std::vector<TopoDS_Shape> shapes {pipe_topology_with_both_caps};
         show_shapes(shapes);     
     }
 
-    this->tool_path = res2;
+    return pipe_topology_with_both_caps;
 }
 
 /*
-    Defines a toolpath. A toolpath is just a tool profile swept through space. 
+    Sweeps a profile along a line. 
     
     Requires that:
         (1) The line lies in the XY-plane.
@@ -331,15 +507,18 @@ ToolPath::ToolPath(const Curve& curve,
                 the bottom of the tool.
 
     Arguments:
-        line:           Line describing the path that the center point of the
-                            bottom face of the tool takes in space.
-        profile:        The cross section of the tool.
-        display_result: Causes windows to be created showing the results of
-                            toolpath creation. 
+        line:    Line describing the path that the center point of the
+                     bottom face of the tool takes in space.
+        profile: The cross section of the tool.
+        display: Causes windows to be created showing the results of
+                     toolpath creation. 
+
+    Return:
+        The shape resulting from extruding the profile along the line.
 */
-ToolPath::ToolPath(const Line& line,
-                   const CylindricalTool& profile,
-                   const bool display_result)
+TopoDS_Shape ToolPath::extrude_along_line(const Line& line,
+                                          const CylindricalTool& profile,
+                                          const bool display) const
 {
     assert(line.line[2] < FP_EQUALS_TOLERANCE);
 
@@ -348,7 +527,7 @@ ToolPath::ToolPath(const Line& line,
     const gp_Pnt end {start.Translated(path)};
     const TopoDS_Face profile_topology {construct_rect_face(path, start, profile.radius * 2, profile.height)};
 
-    if (display_result)
+    if (display)
     {
         // Need to build the topology for the line here. 
         BRepBuilderAPI_MakeEdge edge_topology_builder {start, end};
@@ -373,129 +552,11 @@ ToolPath::ToolPath(const Line& line,
     BRepAlgoAPI_Fuse prism_topology_with_both_caps {prism_topology_with_start_cap.Shape(), end_cap};
     assert(!prism_topology_with_both_caps.HasErrors());
 
-    if (display_result)
+    if (display)
     {
         std::vector<TopoDS_Shape> shapes {prism_topology_with_both_caps};
         show_shapes(shapes); 
     }
     
-    this->tool_path = prism_topology_with_both_caps;
-}
-
-/*
-    Generates a surface mesh on the toolpath topology.
-
-    If the input topology is weird, then this function can fail/take a long
-        time. There is no formal definition of weird and therefore this
-        function cannot test for weirdness, so to be safe, you should visualize
-        the topology you are trying to mesh before calling this function.
-        For example, if the topology contains self intersections, mesh
-        generation may not fail, but it will take tons of time.
-    
-    Arguments:
-        angle:      Maximum angular deflection allowed when generating surface mesh. 
-        deflection: Maximum linear deflection allowed when generating surface mesh.
-    
-    Return:
-        None.
-*/
-void ToolPath::mesh_surface(const double angle, 
-                            const double deflection)
-{
-    // Get rid of any previous mesh associated with this toolpath.
-    BRepTools::Clean(this->tool_path, true);
-
-    IMeshTools_Parameters mesh_params;
-    mesh_params.Angle = angle;
-    mesh_params.Deflection = deflection; 
-    mesh_params.InParallel = true;
-
-    // Seems to produce better triangles.
-    mesh_params.MeshAlgo = IMeshTools_MeshAlgoType_Delabella;
-
-    BRepMesh_IncrementalMesh mesher;
-    mesher.SetShape(this->tool_path);
-    mesher.ChangeParameters() = mesh_params;
-    mesher.Perform();
-
-    for (TopExp_Explorer face_iter {this->tool_path, TopAbs_FACE}; face_iter.More(); face_iter.Next())
-    {
-        const TopoDS_Face face {TopoDS::Face(face_iter.Current())};
-        TopLoc_Location loc;
-        const Handle(Poly_Triangulation) poly_tri {BRep_Tool::Triangulation(face, loc)};
-        
-        // If a face could not be triangulated, something has gone wrong.
-        assert(!poly_tri.IsNull());
-        
-        BRepLib_ToolTriangulatedShape::ComputeNormals(face, poly_tri);
-    }
-}
-
-/*
-    Writes the meshed toolpath to a file. Even if the file already exists, it is 
-        completely overwritten. Per-face normals are included in the .stl file.
-        Each per-face normal is computed by averaging whatever vertex normals
-        are associated with the vertices of the face.
-    See https://www.fabbers.com/tech/STL_Format for the closest thing to a
-        standardization of the STL format.
-    If the toolpath hasn't already been meshed, then the behavior of this
-        function is undefined.
-    
-    Arguments:
-        solid_name: The desired name of the solid in the .stl file.
-        file_path:  Absolute path to the file to write to. Need not already
-                        exist.
-    
-    Returns:
-        None.
-*/
-void ToolPath::shape_to_stl(const std::string solid_name, 
-                            const std::string filepath)
-{
-    std::ofstream f {filepath};  
-    assert(f.good());
-
-    f << "solid " << solid_name << std::endl;
-
-    for (TopExp_Explorer face_it {this->tool_path, TopAbs_FACE}; face_it.More(); face_it.Next())
-    {
-        const TopoDS_Face face {TopoDS::Face(face_it.Current())};
-        TopLoc_Location loc;
-        const Handle(Poly_Triangulation) poly_tri {BRep_Tool::Triangulation(face, loc)};
-        
-        assert(!poly_tri.IsNull());
-
-        for (int tri_it {1}; tri_it <= poly_tri->NbTriangles(); ++tri_it)
-        {
-            const Poly_Triangle& tri {poly_tri->Triangle(tri_it)};
-            
-            // Average the vertex normals to compute the face normal. 
-            int v1_idx, v2_idx, v3_idx;
-            tri.Get(v1_idx, v2_idx, v3_idx);
-            const gp_Vec face_normal {compute_average_vec({poly_tri->Normal(v1_idx), 
-                                                           poly_tri->Normal(v2_idx), 
-                                                           poly_tri->Normal(v3_idx)})};
-            f << "    " << "facet normal " << face_normal.X() << " " << 
-                                              face_normal.Y() << " " << 
-                                              face_normal.Z() << std::endl;
-            f << "        " << "outer loop" << std::endl;
-
-            f << "            " << "vertex " << (poly_tri->Node(tri(1))).X() << " " 
-                                << (poly_tri->Node(tri(1))).Y() << " " 
-                                << (poly_tri->Node(tri(1))).Z() << std::endl;
-
-            f << "            " << "vertex " << (poly_tri->Node(tri(2))).X() << " " 
-                                << (poly_tri->Node(tri(2))).Y() << " " 
-                                << (poly_tri->Node(tri(2))).Z() << std::endl;
-
-            f << "            " << "vertex " << (poly_tri->Node(tri(3))).X() << " " 
-                                << (poly_tri->Node(tri(3))).Y() << " " 
-                                << (poly_tri->Node(tri(3))).Z() << std::endl;
-
-            f << "        " << "endloop" << std::endl;
-            f << "    " << "endfacet" << std::endl;
-        }
-    }
-
-    f << "endsolid " << solid_name;
+    return prism_topology_with_both_caps;
 }

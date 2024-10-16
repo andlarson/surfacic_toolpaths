@@ -16,21 +16,35 @@ class Line;
 
 class ToolPath
 {
-    TopoDS_Shape tool_path;
+    TopoDS_Shape toolpath_shape_union;
+
+    void add_shape(const TopoDS_Shape& s);
+
+    TopoDS_Shape extrude_along_curve(const Curve& curve,
+                                     const CylindricalTool& profile,
+                                     const bool display=false) const;
+
+    TopoDS_Shape extrude_along_line(const Line& curve,
+                                    const CylindricalTool& profile,
+                                    const bool display=false) const;
 
 public:
     ToolPath(const Curve& curve,
              const CylindricalTool& profile,
-             const bool display_result=false);
+             const bool display=false);
     
     ToolPath(const Line& line,
              const CylindricalTool& profile,
-             const bool display_result=false);
+             const bool display=false);
+
+    ToolPath(const std::pair<Curve&, Line&> compound,
+             const CylindricalTool& profile,
+             const bool display=false);
 
     void mesh_surface(const double angle, const double deflection);
 
     void shape_to_stl(const std::string solid_name, 
-                      const std::string filepath);
+                      const std::string filepath) const;
 };
 
 struct CylindricalTool
@@ -47,9 +61,8 @@ public:
 
 class Curve : public Path
 {
-    friend ToolPath::ToolPath(const Curve& curve,
-                              const CylindricalTool& profile,
-                              const bool display_result);
+    friend class ToolPath;
+
 protected:
     Handle(Geom_BSplineCurve) representation; 
 
@@ -73,9 +86,7 @@ public:
 
 class Line : public Path
 {
-    friend ToolPath::ToolPath(const Line& line,
-                              const CylindricalTool& profile,
-                              const bool display_result);
+    friend class ToolPath; 
 
     Vec3D line;
     Point3D start_point;
