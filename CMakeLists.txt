@@ -19,6 +19,8 @@ set(source_files_relative_path
     "util.cpp"
     "curve.cpp"
     "toolpath.cpp"
+    "line.cpp"
+    "path.cpp"
     "visualization/glfw_occt_view.cpp"
     "visualization/glfw_occt_window.cpp"
    )

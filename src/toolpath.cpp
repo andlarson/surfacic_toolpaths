@@ -17,6 +17,7 @@
 #include "BRepOffsetAPI_MakePipe.hxx"
 #include "BRepAlgoAPI_Fuse.hxx"
 #include "BRepPrimAPI_MakeCylinder.hxx"
+#include "BRepPrimAPI_MakePrism.hxx"
 #include "BRepMesh_IncrementalMesh.hxx"
 #include "BRep_Tool.hxx"
 #include "BRepTools.hxx"
@@ -43,9 +44,10 @@
    ****************************************************************************
 */ 
 
-static TopoDS_Face construct_rect_trimmed_surface(gp_Vec normal, gp_Pnt
-                                                  bottom_point, double width,
-                                                  double height);
+static TopoDS_Face construct_rect_face(const gp_Dir normal, 
+                                       const gp_Pnt bottom_point, 
+                                       const double width, 
+                                       const double height);
 
 static gp_Dir compute_average_vec(const std::vector<gp_Vec>& vecs);
 
@@ -59,46 +61,71 @@ static gp_Dir compute_average_vec(const std::vector<gp_Vec>& vecs);
 */ 
 
 /*
-    Constructs a rectangular trimmed surface with the center point of the bottom
-        edge at a passed point in space, with normal lying on the xy-plane, and
-        with centerline extending in the +Z direction.
+    Constructs a face with the center point of the bottom edge at a passed point
+        in space and with normal lying in some direction. 
+
+    Requires that:
+        (1) The normal lies in the XY-plane.
+
+    Assumes that:
+        (1) The face extends in the +Z direction.
+
+    Notes for future improvement:
+        A point, a direction, a width and a height, taken together, are
+            insufficient to describe the location of a rectangle in space.
+            In particular, the rectangle (with dimensions width and height)
+            could lie anywhere on the plane described by the point and direction.
+            As such, in order to make this function more general (i.e. get rid
+            of the assumption about the normal lying in XY-plane and get rid of
+            the assumption about the face extending in +Z direction), the caller 
+            would need to provide more information - potentially the location
+            of each vertex in space.
+        Ideally it would be possible to construct the face as a geometry, and
+            convert it to a topology exactly when necessary. Turns out that's not
+            so easy. Some code below attempts to make a face via a rectangular
+            trimmed surface. This isn't viable because (as best I understand it)
+            rectangular trimmed surfaces only permit rectangles that are
+            axis-aligned to be represented. This isn't sufficiently general.
 
     Arguments:
-        normal:       Normal to the face. 
+        normal:       Normal to the face. Must lie in the xy-plane.
         bottom_point: Location of the bottom point of the rectangular face in
                           space.
         width:        Width of the face. 
         height:       Height of the face.
 */
-static TopoDS_Face construct_rect_trimmed_surface(gp_Vec normal, const gp_Pnt
-                                                  bottom_point, const double
-                                                  width, const double height)
+static TopoDS_Face construct_rect_face(const gp_Dir normal, 
+                                       const gp_Pnt bottom_point, 
+                                       const double width, 
+                                       const double height)
 {
     // An infinite plane. 
-    Handle(Geom_Plane) plane {new Geom_Plane(bottom_point, normal)};
+    const Handle(Geom_Plane) plane {new Geom_Plane(bottom_point, normal)};
     
-    // Construct the basis on the plane.
-    normal.Normalize();
-    double divisor {sqrt(pow(normal.X(), 2) + pow(normal.Y(), 2))};
-    gp_Vec v1 {-normal.Y()/divisor, normal.X()/divisor, 0};
-    gp_Vec v2 {gp_Vec(gp::DZ())};
+    // Construct the two dimensional basis on the plane.
+    // The second axis is hardcoded to point in the +Z direction.
+    // The first axis is orthogonal to the passed normal and the +Z direction.
+    //     Therefore, it lies in the XY-plane.
+    const double divisor {sqrt(pow(normal.X(), 2) + pow(normal.Y(), 2))};
+    const gp_Dir v1 {-normal.Y()/divisor, normal.X()/divisor, 0};
+    const gp_Dir v2 {gp_Vec(gp::DZ())};
 
     // Compute the four points that make up the face.
     // These four points lie on the infinite plane.
     // The points are ordered cyclically. 
-    gp_Pnt p1(bottom_point.X() + (width / 2) * v1.X(),
-              bottom_point.Y() + (width / 2) * v1.Y(),
-              bottom_point.Z() + (width / 2) * v1.Z());
-    gp_Pnt p2(p1.X() + height * v2.X(),
-              p1.Y() + height * v2.Y(),
-              p1.Z() + height * v2.Z());
-    gp_Pnt p3(p2.X() - width * v1.X(),
-              p2.Y() - width * v1.Y(),
-              p2.Z() - width * v1.Z());
-    gp_Pnt p4(p3.X() - height * v2.X(),
-              p3.Y() - height * v2.Y(),
-              p3.Z() - height * v2.Z());
-    std::array<gp_Pnt, VERTICES_PER_RECTANGLE> points {p1, p2, p3, p4};
+    const gp_Pnt p1 {bottom_point.X() + (width / 2) * v1.X(),
+                     bottom_point.Y() + (width / 2) * v1.Y(),
+                     bottom_point.Z() + (width / 2) * v1.Z()};
+    const gp_Pnt p2 {p1.X() + height * v2.X(),
+                     p1.Y() + height * v2.Y(),
+                     p1.Z() + height * v2.Z()};
+    const gp_Pnt p3 {p2.X() - width * v1.X(),
+                     p2.Y() - width * v1.Y(),
+                     p2.Z() - width * v1.Z()};
+    const gp_Pnt p4 {p3.X() - height * v2.X(),
+                     p3.Y() - height * v2.Y(),
+                     p3.Z() - height * v2.Z()};
+    const std::array<gp_Pnt, VERTICES_PER_RECTANGLE> points {p1, p2, p3, p4};
 
     std::vector<BRepBuilderAPI_MakeEdge> face_edges;
     for (auto it {points.begin()}; it != points.end(); ++it)
@@ -124,17 +151,10 @@ static TopoDS_Face construct_rect_trimmed_surface(gp_Vec normal, const gp_Pnt
         assert(wire_for_face.IsDone());
     }
 
-    BRepBuilderAPI_MakeFace face {plane, wire_for_face};
+    const BRepBuilderAPI_MakeFace face {plane, wire_for_face};
     assert(face.IsDone());
     
     /* 
-    // Ideally it would be possible to construct the face as a geometry, and
-    //     convert it to a topology exactly when necessary. Turns out that's not
-    //     so easy. The code below attempts to make a face via a rectangular
-    //     trimmed surface. This isn't viable because (as best I understand it)
-    //     rectangular trimmed surfaces only permit rectangles that are
-    //     axis-aligned to be represented. This isn't sufficiently general.
-
     // Compute the parameterization at the four points. 
     std::array<std::pair<double, double>, VERTICES_PER_RECTANGLE> point_parameters;
     for (int i {0}; i < points.size(); ++i)
@@ -173,24 +193,65 @@ static gp_Dir compute_average_vec(const std::vector<gp_Vec>& vecs)
     return res;
 }
 
+/*
+    Builds a cylinder at a point with axis of rotation in the +Z direction. 
+    
+    Assumes that:
+        (1) The axis of rotation of the cylinder should be in the +Z direction.
+    
+    Arguments:
+        loc:    The location of the center point of the bottom face of the 
+                    cylinder.
+        radius: Radius of the cylinder.
+        height: Height of the cylinder.
+*/
+static TopoDS_Shape build_vertical_cylinder(const gp_Pnt& loc,
+                                            const double radius,
+                                            const double height)
+{
+    gp_Ax2 start_point_axis {};
+    start_point_axis.SetLocation(loc);
+    BRepPrimAPI_MakeCylinder start_cap_topology_builder {start_point_axis, radius, height};
+    TopoDS_Shape cyl {start_cap_topology_builder.Shape()};
+    return cyl;
+}
+
 /* **************************************************************************** */
 
 /*
     Defines a toolpath. A toolpath is just a tool profile swept through space. 
+    
+    Requires that:
+        (1) The tangent at the first point on the curve lies in the XY-plane. 
+        (2) The tangent at the last point on the curve lies in the XY-plane.
+        (3) The curve is G1 continuous.
+        (4) The toolpath does not intersect itself. 
 
-    This function assumes that:
-        (1) The rotational axis of symmetry of the tool profile points in the +z
-                direction at the beginning of the curve. The angle between the
-                tool profile and the curve is maintained along the entirety of
-                the curve.
-            This does not mean that the rotational axis of symmetry of the tool
-                points in the +z direction along the entirety of the curve.
-            TODO: Not clear to me how the angle evolves along the curve.
-        (2) The curve is G1 continuous.
-        (3) The curve describes the path taken in space by the center point of
+    Assumes that:
+        (1) The rotational axis of symmetry of the tool profile points in the +Z
+                direction at the first point on the curve. 
+        (2) The curve describes the path taken in space by the center point of
                 the bottom of the tool.
-        (4) The toolpath does not intersect itself. If it does, the behavior is
-                undefined.
+    
+    Notes for future improvement:
+        The angle between the tool profile and the curve is maintained along
+            the entirety of the curve. This does not mean that the rotational axis
+            of symmetry of the tool points in the +Z direction along the
+            entirety of the curve. TODO: Not clear to me how the angle evolves
+            along the curve. Question submitted on OCCT forum.
+        The axii of rotation should not necessarily be in the +Z direction. To
+            make this work for more general curves, it would be necessary to figure
+            out the correct axii of rotation based the topology produced by the
+            sweep. One approach would be to query every face part of the sweep 
+            topology, find the faces that intersect the start and end points,
+            and use the geometry of the faces (their shape and normal) to compute
+            the correct axis of rotation and the correct sweep angles.
+        It would be awfully nice to be able to check if the result of sweeping
+            the profile is a closed topology. Unfortunately, the IsClosed()
+            member function returns false even when the topology is closed.
+            Maybe BRepOffsetAPI_MakePipe doesn't update the Closed flag?  Also,
+            checking if the topology is a solid via TopoDS's ShapeType member
+            function is also ineffective.
 
     Arguments:
         curve:          Curve describing the path that the center point of the
@@ -225,7 +286,10 @@ ToolPath::ToolPath(const Curve& curve,
     gp_Pnt unused;
     bspline->D1(start_parameter, unused, tangent_start);
 
-    const auto profile_topology {construct_rect_trimmed_surface(tangent_start, start, profile.radius * 2, profile.height)};
+    // The tangent must lie in the XY-plane.
+    assert(tangent_start.Z() < FP_EQUALS_TOLERANCE);
+
+    const TopoDS_Face profile_topology {construct_rect_face(tangent_start, start, profile.radius * 2, profile.height)};
     
     if (display_result)
     {
@@ -236,31 +300,11 @@ ToolPath::ToolPath(const Curve& curve,
     // Do the sweep.
     const BRepOffsetAPI_MakePipe pipe_topology_builder {curve_wire_topology, profile_topology};
     const TopoDS_Shape pipe_topology {pipe_topology_builder.Pipe().Shape()}; 
-    // TODO: Check that the pipe topology is closed. Unfortunately, the
-    //     IsClosed() member function returns false even when the topology is
-    //     closed. Maybe BRepOffsetAPI_MakePipe doesn't update the Closed flag?
-    //     Also, checking if the topology is a solid via TopoDS's ShapeType
-    //     member function is also ineffective.
     
     // Build the cylinders that act as the start and end caps of the tool path. 
-    // The axii of rotation of the cylinders is hardcoded to be in the +Z
-    //     direction. For now, this is imperfect but sufficient.
-    // The axii of rotation should not necessarily be in the +Z direction. To
-    //     make this work for more general curves, it would be necessary to figure
-    //     out the correct axii of rotation based the topology produced by the
-    //     sweep. One approach would be to query every face part of the sweep 
-    //     topology, find the faces that intersect the start and end points,
-    //     and use the geometry of the faces (their shape and normal) to compute
-    //     the correct axis of rotation and the correct sweep angles.
-    gp_Ax2 start_point_axis {};
-    start_point_axis.SetLocation(start);
-    BRepPrimAPI_MakeCylinder start_cap_topology_builder {start_point_axis, profile.radius, profile.height};
-    TopoDS_Shape start_cap {start_cap_topology_builder.Shape()};
-
-    gp_Ax2 end_point_axis {};
-    end_point_axis.SetLocation(end);
-    BRepPrimAPI_MakeCylinder end_cap_topology_builder {end_point_axis, profile.radius, profile.height};
-    TopoDS_Shape end_cap {end_cap_topology_builder.Shape()};
+    // Assumes that caps should have axis of rotation in +Z direction.
+    TopoDS_Shape start_cap {build_vertical_cylinder(start, profile.radius, profile.height)};
+    TopoDS_Shape end_cap {build_vertical_cylinder(end, profile.radius, profile.height)};
 
     BRepAlgoAPI_Fuse res1 {pipe_topology, start_cap};
     assert(!res1.HasErrors());
@@ -274,6 +318,68 @@ ToolPath::ToolPath(const Curve& curve,
     }
 
     this->tool_path = res2;
+}
+
+/*
+    Defines a toolpath. A toolpath is just a tool profile swept through space. 
+    
+    Requires that:
+        (1) The line lies in the XY-plane.
+
+    Assumes that:
+        (1) The line describes the path taken in space by the center point of
+                the bottom of the tool.
+
+    Arguments:
+        line:           Line describing the path that the center point of the
+                            bottom face of the tool takes in space.
+        profile:        The cross section of the tool.
+        display_result: Causes windows to be created showing the results of
+                            toolpath creation. 
+*/
+ToolPath::ToolPath(const Line& line,
+                   const CylindricalTool& profile,
+                   const bool display_result)
+{
+    assert(line.line[2] < FP_EQUALS_TOLERANCE);
+
+    const gp_Vec path {line.line[0], line.line[1], line.line[2]}; 
+    const gp_Pnt start {line.start_point[0], line.start_point[1], line.start_point[2]};
+    const gp_Pnt end {start.Translated(path)};
+    const TopoDS_Face profile_topology {construct_rect_face(path, start, profile.radius * 2, profile.height)};
+
+    if (display_result)
+    {
+        // Need to build the topology for the line here. 
+        BRepBuilderAPI_MakeEdge edge_topology_builder {start, end};
+        assert(edge_topology_builder.IsDone());
+
+        std::vector<TopoDS_Shape> shapes {profile_topology, edge_topology_builder.Edge()};
+        show_shapes(shapes); 
+    }
+    
+    // Do the sweep.
+    BRepPrimAPI_MakePrism prism_topology_builder {profile_topology, path};
+    assert(prism_topology_builder.IsDone());
+    const TopoDS_Shape& prism_topology {prism_topology_builder.Shape()};
+
+    // Build the cylinders that act as the start and end caps of the tool path. 
+    // Assumes that caps should have axis of rotation in +Z direction.
+    TopoDS_Shape start_cap {build_vertical_cylinder(start, profile.radius, profile.height)};
+    TopoDS_Shape end_cap {build_vertical_cylinder(end, profile.radius, profile.height)};
+
+    BRepAlgoAPI_Fuse prism_topology_with_start_cap {prism_topology, start_cap};
+    assert(!prism_topology_with_start_cap.HasErrors());
+    BRepAlgoAPI_Fuse prism_topology_with_both_caps {prism_topology_with_start_cap.Shape(), end_cap};
+    assert(!prism_topology_with_both_caps.HasErrors());
+
+    if (display_result)
+    {
+        std::vector<TopoDS_Shape> shapes {prism_topology_with_both_caps};
+        show_shapes(shapes); 
+    }
+    
+    this->tool_path = prism_topology_with_both_caps;
 }
 
 /*

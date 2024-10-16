@@ -12,6 +12,7 @@
 
 class Curve;
 class CylindricalTool;
+class Line;
 
 class ToolPath
 {
@@ -20,7 +21,11 @@ class ToolPath
 public:
     ToolPath(const Curve& curve,
              const CylindricalTool& profile,
-             const bool display_result);
+             const bool display_result=false);
+    
+    ToolPath(const Line& line,
+             const CylindricalTool& profile,
+             const bool display_result=false);
 
     void mesh_surface(const double angle, const double deflection);
 
@@ -34,7 +39,13 @@ struct CylindricalTool
     double height;
 };
 
-class Curve
+class Path
+{
+public:
+    virtual ~Path() = 0;
+};
+
+class Curve : public Path
 {
     friend ToolPath::ToolPath(const Curve& curve,
                               const CylindricalTool& profile,
@@ -60,3 +71,15 @@ public:
                 const Point3D& center, const double radius);
 };
 
+class Line : public Path
+{
+    friend ToolPath::ToolPath(const Line& line,
+                              const CylindricalTool& profile,
+                              const bool display_result);
+
+    Vec3D line;
+    Point3D start_point;
+
+public:
+    Line(const Point3D& start_point, const Vec3D& line);
+};
