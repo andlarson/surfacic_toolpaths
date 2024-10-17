@@ -20,13 +20,13 @@ class ToolPath
 
     void add_shape(const TopoDS_Shape& s);
 
-    TopoDS_Shape extrude_along_curve(const Curve& curve,
-                                     const CylindricalTool& profile,
-                                     const bool display=false) const;
+    TopoDS_Shape curved_toolpath(const Curve& curve,
+                                 const CylindricalTool& profile,
+                                 const bool display=false) const;
 
-    TopoDS_Shape extrude_along_line(const Line& curve,
-                                    const CylindricalTool& profile,
-                                    const bool display=false) const;
+    TopoDS_Shape linear_toolpath(const Line& curve,
+                                 const CylindricalTool& profile,
+                                 const bool display=false) const;
 
 public:
     ToolPath(const Curve& curve,
@@ -37,7 +37,7 @@ public:
              const CylindricalTool& profile,
              const bool display=false);
 
-    ToolPath(const std::pair<Curve&, Line&> compound,
+    ToolPath(const std::pair<Line&, Curve&> compound,
              const CylindricalTool& profile,
              const bool display=false);
 

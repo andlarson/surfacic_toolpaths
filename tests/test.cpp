@@ -41,7 +41,7 @@ struct CylLineToolpathTest
 struct CylCompoundToolpathTest 
 {
     string name;
-    pair<Line&, InterpolatedCurve&> path;
+    pair<Line&, Curve&> path;
     CylindricalTool tool;
     std::pair<double, double> meshing_parameters;
     bool visualize;
@@ -184,17 +184,64 @@ vector<pair<string, Line>> linear_specs {
                                           //     {-1, -1, 0}
                                           //   }
                                           // },
+                                          // {
+                                          //   "[linear]: simple4",
+                                          //   {
+                                          //     {-2, -2, -2},
+                                          //     {5, 5, 5}
+                                          //   }
+                                          // },
                                         };
 
 vector<pair<string, pair<Line, ArcOfCircle>>> compound_specs1 {
+                                                                // {
+                                                                //   "[linear + arc of circle]: simple_touching1",
+                                                                //   {
+                                                                //     {
+                                                                //       {0, 0, 0},
+                                                                //       {1, 1, 0}
+                                                                //     },
+                                                                //     {{{1, 0}, {0, 1}}, {0, 0}, 1}                                                                   
+                                                                //   }
+                                                                // },
+                                                                // {
+                                                                //   "[linear + arc of circle]: simple_touching2",
+                                                                //   {
+                                                                //     {
+                                                                //       {0, 0, 0},
+                                                                //       {0, 1, 0}
+                                                                //     },
+                                                                //     {{{0, 1}, {-1, 0}}, {0, 0}, 1}                                                                   
+                                                                //   }
+                                                                // },
+                                                                // {
+                                                                //   "[linear + arc of circle]: simple_touching3",
+                                                                //   {
+                                                                //     {
+                                                                //       {1, 1, 0},
+                                                                //       {2, 1, 0}
+                                                                //     },
+                                                                //     {{{1.5, 0}, {0, 1.5}}, {0, 0}, 1.5}                                                                   
+                                                                //   }
+                                                                // },
+                                                                // {
+                                                                //   "[linear + arc of circle]: simply_touching4",
+                                                                //   {
+                                                                //     {
+                                                                //       {1, 1, 0},
+                                                                //       {2, 1, 0}
+                                                                //     },
+                                                                //     {{{1.5, 0}, {0, 1.5}}, {0, 0}, 1.5}                                                                   
+                                                                //   }
+                                                                // },
                                                                 {
-                                                                  "[linear + arc of circle]: simple1",
+                                                                  "[linear + arc of circle]: not_touching1",
                                                                   {
                                                                     {
-                                                                      {0, 0, 0},
-                                                                      {1, 1, 0}
+                                                                      {-1, 0, 0},
+                                                                      {1, 0, 0}
                                                                     },
-                                                                    {{{1, 0}, {0, 1}}, {0, 0}, 1}                                                                   
+                                                                    {{{6, 5}, {5, 6}}, {5, 5}, 1}                                                                   
                                                                   }
                                                                 },
                                                               };
@@ -321,7 +368,9 @@ int main()
 {
     vector<CylCurveToolpathTest> cyl_curve_tests; 
     vector<CylLineToolpathTest> cyl_line_tests;
-    tie(cyl_curve_tests, cyl_line_tests) = gen_tests();
+    vector<CylCompoundToolpathTest> cyl_compound_tests;
+    tie(cyl_curve_tests, cyl_line_tests, cyl_compound_tests) = gen_tests();
     run_tests(cyl_curve_tests);
     run_tests(cyl_line_tests);
+    run_tests(cyl_compound_tests);
 }

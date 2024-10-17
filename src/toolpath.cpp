@@ -225,8 +225,8 @@ ToolPath::ToolPath(const Curve& curve,
                    const CylindricalTool& profile,
                    const bool display)
 {
-    TopoDS_Shape extrusion {extrude_along_curve(curve, profile, display)};
-    add_shape(extrusion);
+    TopoDS_Shape curved {curved_toolpath(curve, profile, display)};
+    add_shape(curved);
 }
 
 /*
@@ -236,22 +236,22 @@ ToolPath::ToolPath(const Line& line,
                    const CylindricalTool& profile,
                    const bool display)
 {
-    TopoDS_Shape extrusion {extrude_along_line(line, profile, display)};
-    add_shape(extrusion);
+    TopoDS_Shape linear {linear_toolpath(line, profile, display)};
+    add_shape(linear);
 }
 
 /*
     See callees for documentation.
 */
-ToolPath::ToolPath(const std::pair<Curve&, Line&> compound,
+ToolPath::ToolPath(const std::pair<Line&, Curve&> compound,
                    const CylindricalTool& profile,
                    const bool display)
 {
-    TopoDS_Shape curve_extrusion {extrude_along_curve(compound.first, profile, display)};
-    add_shape(curve_extrusion);
+    TopoDS_Shape linear {linear_toolpath(compound.first, profile, display)};
+    add_shape(linear);
 
-    TopoDS_Shape line_extrusion {extrude_along_line(compound.second, profile, display)};
-    add_shape(line_extrusion);
+    TopoDS_Shape curved {curved_toolpath(compound.second, profile, display)};
+    add_shape(curved);
 }
 
 /*
@@ -392,7 +392,7 @@ void ToolPath::add_shape(const TopoDS_Shape& s)
 }
 
 /*
-    Sweeps a profile along a curve.
+    Sweeps a profile along a curve and adds caps, forming a curved toolpath.
     
     Requires that:
         (1) The tangent at the first point on the curve lies in the XY-plane. 
@@ -402,7 +402,8 @@ void ToolPath::add_shape(const TopoDS_Shape& s)
 
     Assumes that:
         (1) The rotational axis of symmetry of the tool profile points in the +Z
-                direction at the first point on the curve. 
+                direction at the first point on the curve. This affects how the
+                caps are built.
         (2) The curve describes the path taken in space by the center point of
                 the bottom of the tool.
     
@@ -436,9 +437,9 @@ void ToolPath::add_shape(const TopoDS_Shape& s)
     Return:
         The shape resulting from extruding the profile along the curve.
 */
-TopoDS_Shape ToolPath::extrude_along_curve(const Curve& curve,
-                                           const CylindricalTool& profile,
-                                           const bool display) const
+TopoDS_Shape ToolPath::curved_toolpath(const Curve& curve,
+                                       const CylindricalTool& profile,
+                                       const bool display) const
 {
     const Handle(Geom_BSplineCurve) bspline {curve.representation};
 
@@ -497,13 +498,12 @@ TopoDS_Shape ToolPath::extrude_along_curve(const Curve& curve,
 }
 
 /*
-    Sweeps a profile along a line. 
+    Sweeps a profile along a line and adds caps, forming a linear toolpath.
     
-    Requires that:
-        (1) The line lies in the XY-plane.
-
     Assumes that:
-        (1) The line describes the path taken in space by the center point of
+        (1) The rotational axis of symmetry of the tool profile points in the +Z
+                direction. This affects how the caps are built.
+        (2) The curve describes the path taken in space by the center point of
                 the bottom of the tool.
 
     Arguments:
@@ -516,12 +516,10 @@ TopoDS_Shape ToolPath::extrude_along_curve(const Curve& curve,
     Return:
         The shape resulting from extruding the profile along the line.
 */
-TopoDS_Shape ToolPath::extrude_along_line(const Line& line,
-                                          const CylindricalTool& profile,
-                                          const bool display) const
+TopoDS_Shape ToolPath::linear_toolpath(const Line& line,
+                                       const CylindricalTool& profile,
+                                       const bool display) const
 {
-    assert(line.line[2] < FP_EQUALS_TOLERANCE);
-
     const gp_Vec path {line.line[0], line.line[1], line.line[2]}; 
     const gp_Pnt start {line.start_point[0], line.start_point[1], line.start_point[2]};
     const gp_Pnt end {start.Translated(path)};
