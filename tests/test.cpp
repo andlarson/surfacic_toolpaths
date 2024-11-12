@@ -20,233 +20,245 @@ using namespace std;
 
 struct CylCurveToolpathTest 
 {
-    string name;
-    Curve& path;
-    CylindricalTool tool;
-    std::pair<double, double> meshing_parameters;
-    bool visualize;
-    filesystem::path results_directory;
+    const string name;
+    const Curve& path;
+    const CylindricalTool tool;
+    const std::pair<double, double> meshing_parameters;
+    const bool visualize;
+    const filesystem::path results_directory;
 };
 
 struct CylLineToolpathTest 
 {
-    string name;
-    Line& path;
-    CylindricalTool tool;
-    std::pair<double, double> meshing_parameters;
-    bool visualize;
-    filesystem::path results_directory;
+    const string name;
+    const Line& path;
+    const CylindricalTool tool;
+    const std::pair<double, double> meshing_parameters;
+    const bool visualize;
+    const filesystem::path results_directory;
 };
 
 struct CylCompoundToolpathTest 
 {
-    string name;
-    pair<Line&, Curve&> path;
-    CylindricalTool tool;
-    std::pair<double, double> meshing_parameters;
-    bool visualize;
-    filesystem::path results_directory;
+    const string name;
+    const pair<const Line&, const Curve&> path;
+    const CylindricalTool tool;
+    const std::pair<double, double> meshing_parameters;
+    const bool visualize;
+    const filesystem::path results_directory;
 };
 
-vector<pair<string, InterpolatedCurve>> interpolated_curve_specs { 
-                                                                   // {
-                                                                   //   "[interpolation]: planar corner",
-                                                                   //   {
-                                                                   //     {{1, 0, 0}, {1, 1, 0}, {0, 1, 0}}, 
-                                                                   //     {{0, {0, 1, 0}}, {1, {-1, 0, 0}}, {2, {-1, 0, 0}}}
-                                                                   //   },
-                                                                   // },
-                                                                   // {
-                                                                   //   "[interpolation]: planar straight line",
-                                                                   //   {
-                                                                   //     {{0, 0, 0}, {1, 0, 0}, {2, 0, 0}}, 
-                                                                   //     {{0, {1, 0, 0}}, {1, {1, 0, 0}}, {2, {1, 0, 0}}}
-                                                                   //   },
-                                                                   // },
-                                                                   // TODO: Causes segfault due to bug in OCCT. In general, it appears
-                                                                   //     that sweeping along non-axial stright lines causes segfaults.
-                                                                   // {
-                                                                   //   "[interpolation]: planar non-axial straight line",
-                                                                   //   {
-                                                                   //     {{0, 0, 0}, {1, 1, 0}, {2, 2, 0}}, 
-                                                                   //     {{0, {1, 1, 0}}, {1, {1, 1, 0}}, {2, {1, 1, 0}}}
-                                                                   //   },
-                                                                   // },
-                                                                   // TODO: Causes segfault due to bug in OCCT. In general, it appears
-                                                                   //     that sweeping along non-axial stright lines causes segfaults.
-                                                                   // {
-                                                                   //   "[interpolation]: planar non-axial straight line 2",
-                                                                   //   {
-                                                                   //     {{1, 0, 0}, {0, 1, 0}, {-1, 2, 0}}, 
-                                                                   //     {{0, {-1, 1, 0}}, {1, {-1, 1, 0}}, {2, {-1, 1, 0}}}
-                                                                   //   },
-                                                                   // },
-                                                                   // {
-                                                                   //   "[interpolation]: planar zigzag",
-                                                                   //   {
-                                                                   //     {{0, 0, 0}, {1, 1, 0}, {0, 2, 0}, {3, 3, 0}, {0, 4, 0}}, 
-                                                                   //     {{0, {0, 1, 0}}, {1, {0, 1, 0}}, {2, {0, 1, 0}}, {3, {0, 1, 0}}}
-                                                                   //   }, 
-                                                                   // },
-                                                                   // {
-                                                                   //   "[interpolation]: planar horseshoe",
-                                                                   //   {
-                                                                   //     {{-1, 1, 0}, {-1, .4, 0}, {0, 0, 0}, {1, .4, 0}, {1, 1, 0}}, 
-                                                                   //     {{0, {0, -1, 0}}, {1, {0, -1, 0}}, {2, {1, 0, 0}}, {3, {0, 1, 0}}, {4, {0, 1, 0}}}
-                                                                   //   }, 
-                                                                   // },
-                                                                   // {
-                                                                   //   "[interpolation]: planar one tangent",
-                                                                   //   {
-                                                                   //     {{0, 0, 0}, {1, 5, 0}, {0, 10, 0}, {1, 15, 0}, {0, 20, 0}}, 
-                                                                   //     {{0, {1, 5, 0}}}
-                                                                   //   },
-                                                                   // },
-                                                                   // {
-                                                                   //   "[interpolation]: non-planar corner",
-                                                                   //   { 
-                                                                   //     {{1, 0, 0}, {1, 1, .5}, {0, 1, 5}}, 
-                                                                   //     {{0, {0, 1, 0}}, {1, {-1, 0, 0}}, {2, {-1, 0, 0}}}
-                                                                   //   },
-                                                                   // },
-                                                                   // {
-                                                                   //   "[interpolation]: non-planar zigzag",
-                                                                   //   {
-                                                                   //     {{0, 0, 0}, {1, 1, .5}, {0, 2, 1}, {3, 3, 2}, {0, 4, 3}}, 
-                                                                   //     {{0, {0, 1, 0}}, {1, {0, 1, 0}}, {2, {0, 1, 0}}, {3, {0, 1, 0}}}
-                                                                   //   }, 
-                                                                   // },
-                                                                   // {
-                                                                   //   "[interpolation]: non-planar horseshoe",
-                                                                   //   {
-                                                                   //     {{-1, 1, 0}, {-1, .4, .5}, {0, 0, 1}, {1, .4, .5}, {1, 1, 0}}, 
-                                                                   //     {{0, {0, -1, 0}}, {1, {0, -1, 0}}, {2, {1, 0, 0}}, {3, {0, 1, 0}}, {4, {0, 1, 0}}}
-                                                                   //   }, 
-                                                                   // }
-                                                                };
+const vector<pair<string, InterpolatedCurve>> interpolated_curve_specs 
+{ 
+//  {
+//    "[interpolation]: planar corner",
+//    {
+//      {{1, 0, 0}, {1, 1, 0}, {0, 1, 0}}, 
+//      {{0, {0, 1, 0}}, {1, {-1, 0, 0}}, {2, {-1, 0, 0}}}
+//    },
+//  },
+//  {
+//    "[interpolation]: planar straight line",
+//    {
+//      {{0, 0, 0}, {1, 0, 0}, {2, 0, 0}}, 
+//      {{0, {1, 0, 0}}, {1, {1, 0, 0}}, {2, {1, 0, 0}}}
+//    },
+//  },
+//  TODO: Causes segfault due to bug in OCCT. In general, it appears
+//      that sweeping along non-axial stright lines causes segfaults.
+//  {
+//    "[interpolation]: planar non-axial straight line",
+//    {
+//      {{0, 0, 0}, {1, 1, 0}, {2, 2, 0}}, 
+//      {{0, {1, 1, 0}}, {1, {1, 1, 0}}, {2, {1, 1, 0}}}
+//    },
+//  },
+//  TODO: Causes segfault due to bug in OCCT. In general, it appears
+//      that sweeping along non-axial stright lines causes segfaults.
+//  {
+//    "[interpolation]: planar non-axial straight line 2",
+//    {
+//      {{1, 0, 0}, {0, 1, 0}, {-1, 2, 0}}, 
+//      {{0, {-1, 1, 0}}, {1, {-1, 1, 0}}, {2, {-1, 1, 0}}}
+//    },
+//  },
+//  {
+//    "[interpolation]: planar zigzag",
+//    {
+//      {{0, 0, 0}, {1, 1, 0}, {0, 2, 0}, {3, 3, 0}, {0, 4, 0}}, 
+//      {{0, {0, 1, 0}}, {1, {0, 1, 0}}, {2, {0, 1, 0}}, {3, {0, 1, 0}}}
+//    }, 
+//  },
+//  {
+//    "[interpolation]: planar horseshoe",
+//    {
+//      {{-1, 1, 0}, {-1, .4, 0}, {0, 0, 0}, {1, .4, 0}, {1, 1, 0}}, 
+//      {{0, {0, -1, 0}}, {1, {0, -1, 0}}, {2, {1, 0, 0}}, {3, {0, 1, 0}}, {4, {0, 1, 0}}}
+//    }, 
+//  },
+//  {
+//    "[interpolation]: planar one tangent",
+//    {
+//      {{0, 0, 0}, {1, 5, 0}, {0, 10, 0}, {1, 15, 0}, {0, 20, 0}}, 
+//      {{0, {1, 5, 0}}}
+//    },
+//  },
+//  {
+//    "[interpolation]: non-planar corner",
+//    { 
+//      {{1, 0, 0}, {1, 1, .5}, {0, 1, 5}}, 
+//      {{0, {0, 1, 0}}, {1, {-1, 0, 0}}, {2, {-1, 0, 0}}}
+//    },
+//  },
+//  {
+//    "[interpolation]: non-planar zigzag",
+//    {
+//      {{0, 0, 0}, {1, 1, .5}, {0, 2, 1}, {3, 3, 2}, {0, 4, 3}}, 
+//      {{0, {0, 1, 0}}, {1, {0, 1, 0}}, {2, {0, 1, 0}}, {3, {0, 1, 0}}}
+//    }, 
+//  },
+//  {
+//    "[interpolation]: non-planar horseshoe",
+//    {
+//      {{-1, 1, 0}, {-1, .4, .5}, {0, 0, 1}, {1, .4, .5}, {1, 1, 0}}, 
+//      {{0, {0, -1, 0}}, {1, {0, -1, 0}}, {2, {1, 0, 0}}, {3, {0, 1, 0}}, {4, {0, 1, 0}}}
+//    }, 
+//  }
+};
 
-vector<pair<string, ArcOfCircle>> arc_of_circle_curve_specs {
-                                                              // {
-                                                              //   "[arc of circle]: origin centered 1", 
-                                                              //   {{{1, 0}, {0, 1}}, {0, 0}, 1}
-                                                              // },  
-                                                              // {
-                                                              //   "[arc of circle]: origin centered 2", 
-                                                              //   {{{0, 1}, {1/pow(2, .5), 1/pow(2, .5)}}, {0, 0}, 1},
-                                                              // },  
-                                                              // {
-                                                              //   "[arc of circle]: origin centered 3", 
-                                                              //   {{{-1/pow(2, .5), 1/pow(2, .5)}, {1/pow(2, .5), 1/pow(2, .5)}}, {0, 0}, 1},
-                                                              // },  
-                                                              // {
-                                                              //   "[arc of circle]: origin centered 4", 
-                                                              //   {{{.75, .6614}, {-1, 0}}, {0, 0}, 1},
-                                                              // },
+const vector<pair<string, ArcOfCircle>> arc_of_circle_curve_specs 
+{
+//  {
+//    "[arc of circle]: origin centered 1", 
+//    {{{1, 0}, {0, 1}}, {0, 0}, 1}
+//  },  
+//  {
+//    "[arc of circle]: origin centered 2", 
+//    {{{0, 1}, {1/pow(2, .5), 1/pow(2, .5)}}, {0, 0}, 1},
+//  },  
+//  {
+//    "[arc of circle]: origin centered 3", 
+//    {{{-1/pow(2, .5), 1/pow(2, .5)}, {1/pow(2, .5), 1/pow(2, .5)}}, {0, 0}, 1},
+//  },  
+//  {
+//    "[arc of circle]: origin centered 4", 
+//    {{{.75, .6614}, {-1, 0}}, {0, 0}, 1},
+//  },
 
-                                                              // // Not origin centered. 
-                                                              // {
-                                                              //   "[arc of circle]: origin centered 5", 
-                                                              //   {{{1 + 10, 0 + 10}, {0 + 10, 1 + 10}}, {10, 10}, 1},
-                                                              // },
-                                                              // {
-                                                              //   "[arc of circle]: origin centered 6", 
-                                                              //   {{{0 + 10, 1 + 5}, {1/pow(2, .5) + 10, 1/pow(2, .5) + 5}}, {10, 5}, 1},
-                                                              // },
-                                                              // {
-                                                              //   "[arc of circle]: origin centered 7", 
-                                                              //   {{{-1/pow(2, .5) + 10, 1/pow(2, .5) + 5}, {1/pow(2, .5) + 10, 1/pow(2, .5) + 5}}, {10, 5}, 1},
-                                                              // },
-                                                              // {
-                                                              //   "[arc of circle]: origin centered 8", 
-                                                              //   {{{.75 - 100, .6614 + 3}, {-1 - 100, 0 + 3}}, {-100, 3}, 1},
-                                                              // }
-                                                           };
+//  // Not origin centered. 
+//  {
+//    "[arc of circle]: origin centered 5", 
+//    {{{1 + 10, 0 + 10}, {0 + 10, 1 + 10}}, {10, 10}, 1},
+//  },
+//  {
+//    "[arc of circle]: origin centered 6", 
+//    {{{0 + 10, 1 + 5}, {1/pow(2, .5) + 10, 1/pow(2, .5) + 5}}, {10, 5}, 1},
+//  },
+//  {
+//    "[arc of circle]: origin centered 7", 
+//    {{{-1/pow(2, .5) + 10, 1/pow(2, .5) + 5}, {1/pow(2, .5) + 10, 1/pow(2, .5) + 5}}, {10, 5}, 1},
+//  },
+//  {
+//    "[arc of circle]: origin centered 8", 
+//    {{{.75 - 100, .6614 + 3}, {-1 - 100, 0 + 3}}, {-100, 3}, 1},
+//  }
+};
 
-vector<pair<string, Line>> linear_specs {
-                                          // {
-                                          //   "[linear]: simple1",
-                                          //   {
-                                          //     {0, 0, 0},
-                                          //     {1, 1, 0}
-                                          //   }
-                                          // },
-                                          // {
-                                          //   "[linear]: simple2",
-                                          //   {
-                                          //     {1, 1, 1},
-                                          //     {-1, 0, 0}
-                                          //   }
-                                          // },
-                                          // {
-                                          //   "[linear]: simple3",
-                                          //   {
-                                          //     {1, 1, 0},
-                                          //     {-1, -1, 0}
-                                          //   }
-                                          // },
-                                          // {
-                                          //   "[linear]: simple4",
-                                          //   {
-                                          //     {-2, -2, -2},
-                                          //     {5, 5, 5}
-                                          //   }
-                                          // },
-                                        };
+const vector<pair<string, Line>> linear_specs 
+{
+//  {
+//    "[linear]: simple1",
+//    {
+//      {0, 0, 0},
+//      {1, 1, 0}
+//    }
+//  },
+//  {
+//    "[linear]: simple2",
+//    {
+//      {1, 1, 1},
+//      {-1, 0, 0}
+//    }
+//  },
+//  {
+//    "[linear]: simple3",
+//    {
+//      {1, 1, 0},
+//      {-1, -1, 0}
+//    }
+//  },
+//  {
+//    "[linear]: simple4",
+//    {
+//      {-2, -2, -2},
+//      {5, 5, 5}
+//    }
+//  },
+};
 
-vector<pair<string, pair<Line, ArcOfCircle>>> compound_specs1 {
-                                                                // {
-                                                                //   "[linear + arc of circle]: simple_touching1",
-                                                                //   {
-                                                                //     {
-                                                                //       {0, 0, 0},
-                                                                //       {1, 1, 0}
-                                                                //     },
-                                                                //     {{{1, 0}, {0, 1}}, {0, 0}, 1}                                                                   
-                                                                //   }
-                                                                // },
-                                                                // {
-                                                                //   "[linear + arc of circle]: simple_touching2",
-                                                                //   {
-                                                                //     {
-                                                                //       {0, 0, 0},
-                                                                //       {0, 1, 0}
-                                                                //     },
-                                                                //     {{{0, 1}, {-1, 0}}, {0, 0}, 1}                                                                   
-                                                                //   }
-                                                                // },
-                                                                // {
-                                                                //   "[linear + arc of circle]: simple_touching3",
-                                                                //   {
-                                                                //     {
-                                                                //       {1, 1, 0},
-                                                                //       {2, 1, 0}
-                                                                //     },
-                                                                //     {{{1.5, 0}, {0, 1.5}}, {0, 0}, 1.5}                                                                   
-                                                                //   }
-                                                                // },
-                                                                // {
-                                                                //   "[linear + arc of circle]: simply_touching4",
-                                                                //   {
-                                                                //     {
-                                                                //       {1, 1, 0},
-                                                                //       {2, 1, 0}
-                                                                //     },
-                                                                //     {{{1.5, 0}, {0, 1.5}}, {0, 0}, 1.5}                                                                   
-                                                                //   }
-                                                                // },
-                                                                {
-                                                                  "[linear + arc of circle]: not_touching1",
-                                                                  {
-                                                                    {
-                                                                      {-1, 0, 0},
-                                                                      {1, 0, 0}
-                                                                    },
-                                                                    {{{6, 5}, {5, 6}}, {5, 5}, 1}                                                                   
-                                                                  }
-                                                                },
-                                                              };
-
-/* **************************************************************************** */
+const vector<pair<string, pair<Line, ArcOfCircle>>> compound_specs1 
+{
+//  {
+//    "[linear + arc of circle]: simple_touching1",
+//    {
+//      {
+//        {0, 0, 0},
+//        {1, 1, 0}
+//      },
+//      {{{1, 0}, {0, 1}}, {0, 0}, 1}                                                                   
+//    }
+//  },
+//  {
+//    "[linear + arc of circle]: simple_touching2",
+//    {
+//      {
+//        {0, 0, 0},
+//        {0, 1, 0}
+//      },
+//      {{{0, 1}, {-1, 0}}, {0, 0}, 1}                                                                   
+//    }
+//  },
+//  {
+//    "[linear + arc of circle]: simple_touching3",
+//    {
+//      {
+//        {1, 1, 0},
+//        {2, 1, 0}
+//      },
+//      {{{1.5, 0}, {0, 1.5}}, {0, 0}, 1.5}                                                                   
+//    }
+//  },
+//  {
+//    "[linear + arc of circle]: simply_touching4",
+//    {
+//      {
+//        {1, 1, 0},
+//        {2, 1, 0}
+//      },
+//      {{{1.5, 0}, {0, 1.5}}, {0, 0}, 1.5}                                                                   
+//    }
+//  },
+//  {
+//    "[linear + arc of circle]: not_touching1",
+//    {
+//      {
+//        {-1, 0, 0},
+//        {1, 0, 0}
+//      },
+//      {{{6, 5}, {5, 6}}, {5, 5}, 1}                                                                   
+//    }
+//  },
+  {
+    "[linear + arc of circle]: realistic_touching",
+    {
+      {
+        {6.044, -.888, -.3},
+        {-.014, .553, 0}
+      },
+      {{{6.030, -.335, -.3}, {3.669, -.381, -.3}}, {-.014885, 249.31, -.3}, 249.72}
+    }
+  },
+};
 
 /* 
    ****************************************************************************
@@ -257,8 +269,6 @@ vector<pair<string, pair<Line, ArcOfCircle>>> compound_specs1 {
 using Tests = tuple<vector<CylCurveToolpathTest>, vector<CylLineToolpathTest>, vector<CylCompoundToolpathTest>>;
 static Tests gen_tests();
 template <class T> static void run_tests(vector<T>& tests);
-
-/* **************************************************************************** */
 
 /* 
    ****************************************************************************
@@ -275,7 +285,7 @@ static Tests gen_tests()
     const filesystem::path default_results_directory {"/tmp/"};
     const bool visualize {true};
 
-    for (auto& interpolated_curve_spec : interpolated_curve_specs)
+    for (const auto& interpolated_curve_spec : interpolated_curve_specs)
         get<0>(tests).push_back(
                                  {
                                    interpolated_curve_spec.first,
@@ -287,7 +297,7 @@ static Tests gen_tests()
                                  }
                                ); 
 
-    for (auto& arc_of_circle_curve_spec : arc_of_circle_curve_specs)
+    for (const auto& arc_of_circle_curve_spec : arc_of_circle_curve_specs)
         get<0>(tests).push_back(
                                  {
                                    arc_of_circle_curve_spec.first,
@@ -299,7 +309,7 @@ static Tests gen_tests()
                                  }
                                ); 
 
-    for (auto& linear_spec : linear_specs) 
+    for (const auto& linear_spec : linear_specs) 
         get<1>(tests).push_back(
                                  {
                                    linear_spec.first,
@@ -311,7 +321,7 @@ static Tests gen_tests()
                                  }
                                ); 
 
-    for (auto& compound_spec : compound_specs1) 
+    for (const auto& compound_spec : compound_specs1) 
         get<2>(tests).push_back(
                                  {
                                    compound_spec.first,
@@ -327,7 +337,7 @@ static Tests gen_tests()
 }
 
 template <class T>
-static void run_tests(vector<T>& tests)
+static void run_tests(const vector<T>& tests)
 { 
     for (const auto& test : tests)
     {
@@ -356,21 +366,10 @@ static void run_tests(vector<T>& tests)
     }
 }
 
-/* **************************************************************************** */
-
-/* 
-   ****************************************************************************
-                                        Main 
-   ****************************************************************************
-*/ 
-
 int main()
 {
-    vector<CylCurveToolpathTest> cyl_curve_tests; 
-    vector<CylLineToolpathTest> cyl_line_tests;
-    vector<CylCompoundToolpathTest> cyl_compound_tests;
-    tie(cyl_curve_tests, cyl_line_tests, cyl_compound_tests) = gen_tests();
-    run_tests(cyl_curve_tests);
-    run_tests(cyl_line_tests);
-    run_tests(cyl_compound_tests);
+    const Tests t {gen_tests()};
+    run_tests(get<0>(t));
+    run_tests(get<1>(t));
+    run_tests(get<2>(t));
 }

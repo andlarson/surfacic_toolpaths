@@ -1,8 +1,3 @@
-/*
-    Provides functionality to visualize OCCT B-Rep geometries using GLFW and
-        (therefore) OpenGL.
-*/
-
 // Standard Library.
 #include <iostream>
 
@@ -276,7 +271,7 @@ void GlfwOcctView::on_mouse_move(int pos_x, int pos_y)
     Arguments:
         shapes: Shapes to be displayed.
 */
-void show_shapes(std::vector<TopoDS_Shape>& shapes)
+void show_shapes(const std::vector<TopoDS_Shape>& shapes)
 {
     GlfwOcctView glfw_occt_view; 
 

@@ -212,7 +212,7 @@ static TopoDS_Shape build_vertical_cylinder(const gp_Pnt& loc,
     gp_Ax2 start_point_axis {};
     start_point_axis.SetLocation(loc);
     BRepPrimAPI_MakeCylinder start_cap_topology_builder {start_point_axis, radius, height};
-    TopoDS_Shape cyl {start_cap_topology_builder.Shape()};
+    const TopoDS_Shape cyl {start_cap_topology_builder.Shape()};
     return cyl;
 }
 
@@ -225,7 +225,7 @@ ToolPath::ToolPath(const Curve& curve,
                    const CylindricalTool& profile,
                    const bool display)
 {
-    TopoDS_Shape curved {curved_toolpath(curve, profile, display)};
+    const TopoDS_Shape curved {curved_toolpath(curve, profile, display)};
     add_shape(curved);
 }
 
@@ -236,22 +236,28 @@ ToolPath::ToolPath(const Line& line,
                    const CylindricalTool& profile,
                    const bool display)
 {
-    TopoDS_Shape linear {linear_toolpath(line, profile, display)};
+    const TopoDS_Shape linear {linear_toolpath(line, profile, display)};
     add_shape(linear);
 }
 
 /*
     See callees for documentation.
 */
-ToolPath::ToolPath(const std::pair<Line&, Curve&> compound,
+ToolPath::ToolPath(const std::pair<const Line&, const Curve&> compound,
                    const CylindricalTool& profile,
                    const bool display)
 {
-    TopoDS_Shape linear {linear_toolpath(compound.first, profile, display)};
+    const TopoDS_Shape linear {linear_toolpath(compound.first, profile, display)};
     add_shape(linear);
 
-    TopoDS_Shape curved {curved_toolpath(compound.second, profile, display)};
+    const TopoDS_Shape curved {curved_toolpath(compound.second, profile, display)};
     add_shape(curved);
+
+    if (display)
+    {
+        const std::vector<TopoDS_Shape> shapes {this->toolpath_shape_union};
+        show_shapes(shapes);     
+    }
 }
 
 /*
@@ -263,6 +269,8 @@ ToolPath::ToolPath(const std::pair<Line&, Curve&> compound,
         the topology you are trying to mesh before calling this function.
         For example, if the topology contains self intersections, mesh
         generation may not fail, but it will take tons of time.
+    There is no guarantee that the produced surface mesh is any good. The caller
+        is responsible for checking its quality. This function is best effort.
     
     Arguments:
         angle:      Maximum angular deflection allowed when generating surface mesh. 
@@ -282,9 +290,6 @@ void ToolPath::mesh_surface(const double angle,
     mesh_params.Deflection = deflection; 
     mesh_params.InParallel = true;
 
-    // Seems to produce better triangles.
-    // mesh_params.MeshAlgo = IMeshTools_MeshAlgoType_Delabella;
-
     BRepMesh_IncrementalMesh mesher;
     mesher.SetShape(this->toolpath_shape_union);
     mesher.ChangeParameters() = mesh_params;
@@ -295,11 +300,9 @@ void ToolPath::mesh_surface(const double angle,
         const TopoDS_Face face {TopoDS::Face(face_iter.Current())};
         TopLoc_Location loc;
         const Handle(Poly_Triangulation) poly_tri {BRep_Tool::Triangulation(face, loc)};
-        
-        // If a face could not be triangulated, something has gone wrong.
-        assert(!poly_tri.IsNull());
-        
-        BRepLib_ToolTriangulatedShape::ComputeNormals(face, poly_tri);
+
+        if (!poly_tri.IsNull())
+            BRepLib_ToolTriangulatedShape::ComputeNormals(face, poly_tri);
     }
 }
 
@@ -313,7 +316,7 @@ void ToolPath::mesh_surface(const double angle,
 
     Assumes:
         (1) The caller is OK with the file being overwritten if it already exists.
-        (2) The toolpath has already been meshed.
+        (2) The toolpath has already been meshed in a satisfactory way.
         
     Arguments:
         solid_name: The desired name of the solid in the .stl file.
@@ -340,29 +343,30 @@ void ToolPath::shape_to_stl(const std::string solid_name,
         TopLoc_Location loc;
         const Handle(Poly_Triangulation) poly_tri {BRep_Tool::Triangulation(face, loc)};
         
-        assert(!poly_tri.IsNull());
-
-        for (int tri_it {1}; tri_it <= poly_tri->NbTriangles(); ++tri_it)
-        {
-            const Poly_Triangle& tri {poly_tri->Triangle(tri_it)};
-            
-            // Average the vertex normals to compute the face normal. 
-            int v1_idx, v2_idx, v3_idx;
-            tri.Get(v1_idx, v2_idx, v3_idx);
-            const gp_Vec face_normal {compute_average_vec({poly_tri->Normal(v1_idx), poly_tri->Normal(v2_idx), poly_tri->Normal(v3_idx)})};
-
-            // Write the face normals.
-            f << FOUR_SPACES << "facet normal " << face_normal.X() << " " <<  face_normal.Y() << " " << face_normal.Z() << std::endl;
-            
-            // Write the vertices.
-            f << EIGHT_SPACES << "outer loop" << std::endl;
-            for (int i {1}; i <= VERTICES_PER_TRIANGLE; ++i)
+        // It's not this function's resposibility to deal with faces that are
+        //     not triangulated.
+        if (!poly_tri.IsNull())
+            for (int tri_it {1}; tri_it <= poly_tri->NbTriangles(); ++tri_it)
             {
-                f << TWELVE_SPACES << "vertex " << (poly_tri->Node(tri(i))).X() << " " << (poly_tri->Node(tri(i))).Y() << " " << (poly_tri->Node(tri(i))).Z() << std::endl;
+                const Poly_Triangle& tri {poly_tri->Triangle(tri_it)};
+                
+                // Average the vertex normals to compute the face normal. 
+                int v1_idx, v2_idx, v3_idx;
+                tri.Get(v1_idx, v2_idx, v3_idx);
+                const gp_Vec face_normal {compute_average_vec({poly_tri->Normal(v1_idx), poly_tri->Normal(v2_idx), poly_tri->Normal(v3_idx)})};
+
+                // Write the face normals.
+                f << FOUR_SPACES << "facet normal " << face_normal.X() << " " <<  face_normal.Y() << " " << face_normal.Z() << std::endl;
+                
+                // Write the vertices.
+                f << EIGHT_SPACES << "outer loop" << std::endl;
+                for (int i {1}; i <= VERTICES_PER_TRIANGLE; ++i)
+                {
+                    f << TWELVE_SPACES << "vertex " << (poly_tri->Node(tri(i))).X() << " " << (poly_tri->Node(tri(i))).Y() << " " << (poly_tri->Node(tri(i))).Z() << std::endl;
+                }
+                f << EIGHT_SPACES << "endloop" << std::endl;
+                f << FOUR_SPACES << "endfacet" << std::endl;
             }
-            f << EIGHT_SPACES << "endloop" << std::endl;
-            f << FOUR_SPACES << "endfacet" << std::endl;
-        }
     }
 
     f << "endsolid " << solid_name;
@@ -395,8 +399,10 @@ void ToolPath::add_shape(const TopoDS_Shape& s)
     Sweeps a profile along a curve and adds caps, forming a curved toolpath.
     
     Requires that:
-        (1) The tangent at the first point on the curve lies in the XY-plane. 
-        (2) The tangent at the last point on the curve lies in the XY-plane.
+        (1) The tangent at the first point on the curve lies on a plane parallel
+                to the XY-plane. 
+        (2) The tangent at the last point on the curve lies on a plane parallel
+                to the XY-plane.
         (3) The curve is G1 continuous.
         (4) The toolpath does not intersect itself. 
 
@@ -463,14 +469,14 @@ TopoDS_Shape ToolPath::curved_toolpath(const Curve& curve,
     gp_Pnt unused;
     bspline->D1(start_parameter, unused, tangent_start);
 
-    // The tangent must lie in the XY-plane.
+    // The tangent vector must lie in the XY-plane.
     assert(tangent_start.Z() < FP_EQUALS_TOLERANCE);
 
     const TopoDS_Face profile_topology {construct_rect_face(tangent_start, start, profile.radius * 2, profile.height)};
     
     if (display)
     {
-        std::vector<TopoDS_Shape> shapes {profile_topology, curve_wire_topology};
+        const std::vector<TopoDS_Shape> shapes {profile_topology, curve_wire_topology};
         show_shapes(shapes); 
     }
 
@@ -490,7 +496,7 @@ TopoDS_Shape ToolPath::curved_toolpath(const Curve& curve,
 
     if (display)
     {
-        std::vector<TopoDS_Shape> shapes {pipe_topology_with_both_caps};
+        const std::vector<TopoDS_Shape> shapes {pipe_topology_with_both_caps};
         show_shapes(shapes);     
     }
 
@@ -531,7 +537,7 @@ TopoDS_Shape ToolPath::linear_toolpath(const Line& line,
         BRepBuilderAPI_MakeEdge edge_topology_builder {start, end};
         assert(edge_topology_builder.IsDone());
 
-        std::vector<TopoDS_Shape> shapes {profile_topology, edge_topology_builder.Edge()};
+        const std::vector<TopoDS_Shape> shapes {profile_topology, edge_topology_builder.Edge()};
         show_shapes(shapes); 
     }
     
@@ -552,7 +558,7 @@ TopoDS_Shape ToolPath::linear_toolpath(const Line& line,
 
     if (display)
     {
-        std::vector<TopoDS_Shape> shapes {prism_topology_with_both_caps};
+        const std::vector<TopoDS_Shape> shapes {prism_topology_with_both_caps};
         show_shapes(shapes); 
     }
     

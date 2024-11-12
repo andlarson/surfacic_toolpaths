@@ -70,4 +70,4 @@ private:
     Handle(GlfwOcctWindow) occt_window;
 };
 
-void show_shapes(std::vector<TopoDS_Shape>& shapes);
+void show_shapes(const std::vector<TopoDS_Shape>& shapes);

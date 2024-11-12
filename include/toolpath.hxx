@@ -37,7 +37,7 @@ public:
              const CylindricalTool& profile,
              const bool display=false);
 
-    ToolPath(const std::pair<Line&, Curve&> compound,
+    ToolPath(const std::pair<const Line&, const Curve&> compound,
              const CylindricalTool& profile,
              const bool display=false);
 
