@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.26)
 project(surfacic_toolpaths LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -6,6 +6,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
+
+include("${CMAKE_SOURCE_DIR}/cmake/utils.cmake")
+GCC8_filesystem_stl_fix()
 
 # ------------------------------------------------------------------------------
 #                              Building the Library 
@@ -53,9 +56,15 @@ list(TRANSFORM public_header_files_relative_path
      OUTPUT_VARIABLE public_header_files_absolute_path
     )
 
+# Warning: There seems to be a bug in the libTKDraw.so dynamic library that
+#     causes a segfault when it cleans up after main() returns. Only link
+#     against what is absoutely necessary.
 target_link_libraries(${PROJECT_NAME}
                       PUBLIC
-                      ${OpenCASCADE_LIBRARIES}
+                      ${OpenCASCADE_FoundationClasses_LIBRARIES}
+                      ${OpenCASCADE_ModelingData_LIBRARIES}
+                      ${OpenCASCADE_ModelingAlgorithms_LIBRARIES}
+                      ${OpenCASCADE_Visualization_LIBRARIES}
                       glfw
                      )
 

@@ -1,6 +1,7 @@
 // Standard library.
 #include <vector>
 #include <fstream>
+#include <cassert>
 
 // Third party.
 
@@ -256,7 +257,8 @@ ToolPath::ToolPath(const std::pair<const Line&, const Curve&> compound,
     if (display)
     {
         const std::vector<TopoDS_Shape> shapes {this->toolpath_shape_union};
-        show_shapes(shapes);     
+        GlfwOcctView view;
+        view.show_shapes(shapes);     
     }
 }
 
@@ -477,7 +479,8 @@ TopoDS_Shape ToolPath::curved_toolpath(const Curve& curve,
     if (display)
     {
         const std::vector<TopoDS_Shape> shapes {profile_topology, curve_wire_topology};
-        show_shapes(shapes); 
+        GlfwOcctView view;
+        view.show_shapes(shapes); 
     }
 
     // Do the sweep.
@@ -497,7 +500,8 @@ TopoDS_Shape ToolPath::curved_toolpath(const Curve& curve,
     if (display)
     {
         const std::vector<TopoDS_Shape> shapes {pipe_topology_with_both_caps};
-        show_shapes(shapes);     
+        GlfwOcctView view;
+        view.show_shapes(shapes);     
     }
 
     return pipe_topology_with_both_caps;
@@ -538,7 +542,8 @@ TopoDS_Shape ToolPath::linear_toolpath(const Line& line,
         assert(edge_topology_builder.IsDone());
 
         const std::vector<TopoDS_Shape> shapes {profile_topology, edge_topology_builder.Edge()};
-        show_shapes(shapes); 
+        GlfwOcctView view;
+        view.show_shapes(shapes); 
     }
     
     // Do the sweep.
@@ -559,7 +564,8 @@ TopoDS_Shape ToolPath::linear_toolpath(const Line& line,
     if (display)
     {
         const std::vector<TopoDS_Shape> shapes {prism_topology_with_both_caps};
-        show_shapes(shapes); 
+        GlfwOcctView view;
+        view.show_shapes(shapes); 
     }
     
     return prism_topology_with_both_caps;

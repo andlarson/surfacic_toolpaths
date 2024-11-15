@@ -248,16 +248,16 @@ const vector<pair<string, pair<Line, ArcOfCircle>>> compound_specs1
 //      {{{6, 5}, {5, 6}}, {5, 5}, 1}                                                                   
 //    }
 //  },
+{
+  "[linear + arc of circle]: realistic_touching",
   {
-    "[linear + arc of circle]: realistic_touching",
     {
-      {
-        {6.044, -.888, -.3},
-        {-.014, .553, 0}
-      },
-      {{{6.030, -.335, -.3}, {3.669, -.381, -.3}}, {-.014885, 249.31, -.3}, 249.72}
-    }
-  },
+      {6.044, -.888, -.3},
+      {-.014, .553, 0}
+    },
+    {{{6.030, -.335, -.3}, {3.669, -.381, -.3}}, {-.014885, 249.31, -.3}, 249.72}
+  }
+},
 };
 
 /* 
@@ -372,4 +372,6 @@ int main()
     run_tests(get<0>(t));
     run_tests(get<1>(t));
     run_tests(get<2>(t));
+
+    return EXIT_SUCCESS;
 }

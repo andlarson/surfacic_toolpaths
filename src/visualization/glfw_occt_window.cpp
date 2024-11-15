@@ -1,14 +1,11 @@
 /*
-    Contains the implementation of the GlfwOcctWindow class. This class is a wrapper
-        for a GLFW window. Most function members of this class are registered as
-        callbacks for the GLFW window. For example, when the GLFW window is resized,
-        the GlfwOcctWindow::DoResize() function is called-back and the data members
-        of the GlfwOcctWindow class are updated to mirror the new size of the GLFW
-        window.
+    The content of this file was heavily inspired by: 
+    https://github.com/caadxyz/glfwOcctViewer 
 */
 
 // Standard library.
 #include <string>
+#include <cassert>
 
 // Third party.
 
@@ -16,29 +13,33 @@
 #include "GLFW/glfw3.h"
 
 #undef Handle 
-#define GLFW_EXPOSE_NATIVE_COCOA
-#define GLFW_EXPOSE_NATIVE_NSGL
+// #define GLFW_EXPOSE_NATIVE_COCOA
+// #define GLFW_EXPOSE_NATIVE_NSGL
+#define GLFW_EXPOSE_NATIVE_GLX
+#define GLFW_EXPOSE_NATIVE_X11
 #include "GLFW/glfw3native.h"
 
 // Library private.
 #include "glfw_occt_window_p.hxx"
 
 /*
-    Creates an GLFW window and initializes the data members in this class to
+    Creates a GLFW window and initializes the data members in this class to
         mirror the characteristics of the underlying window.
 */
 GlfwOcctWindow::GlfwOcctWindow(int width, int height, const std::string& title)
-  : glfw_window(glfwCreateWindow(width, height, title.c_str(), NULL, NULL)),
-    x_left(0),
-    y_top(0),
-    x_right(0),
-    y_bottom(0)
 {
+    GLFWwindow *res {glfwCreateWindow(width, height, title.c_str(), NULL, NULL)};
+    assert(res != nullptr);
+    this->glfw_window = res;
+
     int cur_width = 0, cur_height = 0;
-    glfwGetWindowPos(glfw_window, &x_left, &y_top);
-    glfwGetWindowSize(glfw_window, &cur_width, &cur_height);
-    x_right = x_left + cur_width;
-    y_bottom = y_top + cur_height;
+    glfwGetWindowPos(this->glfw_window, &this->x_left, &this->y_top);
+    glfwGetWindowSize(this->glfw_window, &cur_width, &cur_height);
+    this->x_right = x_left + cur_width;
+    this->y_bottom = y_top + cur_height;
+    
+    // Warning: This is Linux-specific for some reason!!
+    myDisplay = new Aspect_DisplayConnection(glfwGetX11Display());
 }
 
 /*
@@ -46,8 +47,19 @@ GlfwOcctWindow::GlfwOcctWindow(int width, int height, const std::string& title)
 */
 void GlfwOcctWindow::close()
 {
-    glfwDestroyWindow(glfw_window);
-    glfw_window = nullptr;
+    // This seems like odd behavior. If this nullptr check and nullptr set are
+    //     omitted, then GLFW_NOT_INITIALIZED errors happen upon the call to
+    //     glfwDestroyWindow(). The reason for this is that, when the destructor
+    //     for the view data member runs, for some reason, it ends up calling
+    //     close() on the this->glfw_window. This means that close() can be
+    //     called twice: once explicitly and once implicitly via the destructor.
+    //     The nullptr check and set prevents the same glfw window from being
+    //     destroyed twice, which would be an error!
+    if (this->glfw_window != nullptr)
+    {
+        glfwDestroyWindow(this->glfw_window);
+        glfw_window = nullptr;
+    }
 }
 
 /*
@@ -57,7 +69,7 @@ void GlfwOcctWindow::close()
 */
 Aspect_Drawable GlfwOcctWindow::NativeHandle() const
 {
-    return (Aspect_Drawable) glfwGetCocoaWindow(glfw_window);
+    return glfwGetX11Window(this->glfw_window);
 }
 
 /*
@@ -65,7 +77,8 @@ Aspect_Drawable GlfwOcctWindow::NativeHandle() const
 */
 Aspect_RenderingContext GlfwOcctWindow::opengl_context() const
 {
-    return (NSOpenGLContext*) glfwGetNSGLContext(glfw_window);
+    GLXContext res {glfwGetGLXContext(this->glfw_window)};
+    return res;
 }
 
 /*
@@ -73,7 +86,7 @@ Aspect_RenderingContext GlfwOcctWindow::opengl_context() const
 */
 Standard_Boolean GlfwOcctWindow::IsMapped() const
 {
-    return glfwGetWindowAttrib(glfw_window, GLFW_VISIBLE) != 0;
+    return glfwGetWindowAttrib(this->glfw_window, GLFW_VISIBLE) != 0;
 }
 
 /*
@@ -81,7 +94,7 @@ Standard_Boolean GlfwOcctWindow::IsMapped() const
 */
 void GlfwOcctWindow::Map() const
 {
-    glfwShowWindow(glfw_window);
+    glfwShowWindow(this->glfw_window);
 }
 
 /*
@@ -89,7 +102,7 @@ void GlfwOcctWindow::Map() const
 */
 void GlfwOcctWindow::Unmap() const
 {
-    glfwHideWindow(glfw_window);
+    glfwHideWindow(this->glfw_window);
 }
 
 /*
@@ -98,11 +111,11 @@ void GlfwOcctWindow::Unmap() const
 */
 Aspect_TypeOfResize GlfwOcctWindow::DoResize()
 {
-    if (glfwGetWindowAttrib(glfw_window, GLFW_VISIBLE) == 1)
+    if (glfwGetWindowAttrib(this->glfw_window, GLFW_VISIBLE) == 1)
     {
         int anXPos = 0, anYPos = 0, aWidth = 0, aHeight = 0;
-        glfwGetWindowPos(glfw_window, &anXPos, &anYPos);
-        glfwGetWindowSize(glfw_window, &aWidth, &aHeight);
+        glfwGetWindowPos(this->glfw_window, &anXPos, &anYPos);
+        glfwGetWindowSize(this->glfw_window, &aWidth, &aHeight);
         x_left = anXPos;
         x_right = anXPos + aWidth;
         y_top = anYPos;
@@ -118,6 +131,6 @@ Aspect_TypeOfResize GlfwOcctWindow::DoResize()
 Graphic3d_Vec2i GlfwOcctWindow::cursor_position() const
 {
     Graphic3d_Vec2d cur_pos;
-    glfwGetCursorPos(glfw_window, &cur_pos.x(), &cur_pos.y());
+    glfwGetCursorPos(this->glfw_window, &cur_pos.x(), &cur_pos.y());
     return Graphic3d_Vec2i((int) cur_pos.x(), (int) cur_pos.y());
 }

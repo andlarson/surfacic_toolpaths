@@ -1,6 +1,7 @@
 // Standard library.
 #include <vector>
 #include <limits>
+#include <cassert>
 
 // Third party.
 #include "TColgp_HArray1OfPnt.hxx"

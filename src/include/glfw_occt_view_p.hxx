@@ -11,18 +11,19 @@
 class GlfwOcctView : protected AIS_ViewController
 {
 public:
-    GlfwOcctView(); 
-    ~GlfwOcctView(); 
+    GlfwOcctView() {}; 
+    ~GlfwOcctView() {}; 
 
-    void main_loop();
-
-    Handle(V3d_View) view;
-    Handle(AIS_InteractiveContext) context;
+    void show_shapes(const std::vector<TopoDS_Shape>& shapes);
 
 private:
+    Handle(V3d_View) view;
+    Handle(AIS_InteractiveContext) context;
+    Handle(GlfwOcctWindow) occt_window;
+
+    void main_loop();
     void init_window(int width, int height, const char* title);
     void init_viewer();
-    void init_demo_scene();
     void cleanup();
 
     /***************************************************************************
@@ -66,8 +67,4 @@ private:
     { 
         to_view(win)->on_mouse_move((int) pos_x, (int) pos_y); 
     }
-
-    Handle(GlfwOcctWindow) occt_window;
 };
-
-void show_shapes(const std::vector<TopoDS_Shape>& shapes);
