@@ -29,7 +29,7 @@ public:
         return this->myDisplay; 
     }
 
-    GLFWwindow* get_glfw_window() 
+    GLFWwindow* get_glfw_window() const
     { 
         return this->glfw_window; 
     }

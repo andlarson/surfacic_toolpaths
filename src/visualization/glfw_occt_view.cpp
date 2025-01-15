@@ -4,7 +4,7 @@
 */
 
 // Standard library.
-#include <cassert>
+#include <stdexcept>
 
 // Third party.
 
@@ -88,7 +88,8 @@ void GlfwOcctView::error_callback(int error, const char* description)
 void GlfwOcctView::init_window(int width, int height, const char* title)
 {
     const int res1 {glfwInit()};
-    assert(res1 == GLFW_TRUE);
+    if (res1 != GLFW_TRUE)
+        throw std::runtime_error("GLFW initialization failed!");
     
     // Return value not checked here because error callback persists across
     //     initialization and termination of GLFW library.
@@ -98,31 +99,39 @@ void GlfwOcctView::init_window(int width, int height, const char* title)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     
     // Only necessary on MacOS due to old system version of OpenGL? 
-    // glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-
+#if defined(__APPLE__)
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
+    
+    // Only necessary on MacOS because system OpenGL only offers core profile?
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     
-    // Create a OCCT-native data structure, GlfwOcctWindow, that has characteristics
-    //     which mirror the GLFW window, and associate it with the GLFW window.
+    // Create a GlfwOcctWindow, that has characteristics which mirror the 
+    //     GLFW window, and associate it with the GLFW window.
     this->occt_window = new GlfwOcctWindow(width, height, title);
     glfwSetWindowUserPointer(this->occt_window->get_glfw_window(), this);
     
     // Set callbacks for various actions.
     // These should be the first callbacks set, and hence shouldn't return anything.
     const auto res3 {glfwSetWindowSizeCallback(this->occt_window->get_glfw_window(), GlfwOcctView::resize_callback)};
-    assert(res3 == nullptr);
+    if (res3 != nullptr)
+        throw std::runtime_error("A window size callback had already been set!");
 
     const auto res4 {glfwSetFramebufferSizeCallback(this->occt_window->get_glfw_window(), GlfwOcctView::fb_resize_callback)};
-    assert(res4 == nullptr);
+    if (res4 != nullptr)
+        throw std::runtime_error("A frame buffer size callback had already been set!");
 
     const auto res5 {glfwSetScrollCallback(this->occt_window->get_glfw_window(), GlfwOcctView::mouse_scroll_callback)};
-    assert(res5 == nullptr);
+    if (res5 != nullptr)
+        throw std::runtime_error("A set scroll callback had already been set!");
 
     const auto res6 {glfwSetMouseButtonCallback(this->occt_window->get_glfw_window(), GlfwOcctView::mouse_button_callback)};
-    assert(res6 == nullptr);
+    if (res6 != nullptr)
+        throw std::runtime_error("A set mouse button callback had already been set!");
 
     const auto res7 {glfwSetCursorPosCallback(this->occt_window->get_glfw_window(), GlfwOcctView::mouse_move_callback)};
-    assert(res7 == nullptr);
+    if (res7 != nullptr)
+        throw std::runtime_error("A set cursor position callback had already been set!");
 }
 
 /*
@@ -134,6 +143,8 @@ void GlfwOcctView::init_window(int width, int height, const char* title)
 */
 void GlfwOcctView::init_viewer()
 {
+    // The display argument only needs to be non-null on Linux systems. I
+    //     totally don't understand why this is the case.
     Handle(OpenGl_GraphicDriver) graphic_driver {new OpenGl_GraphicDriver(this->occt_window->get_display(), false)};
 
     Handle(V3d_Viewer) viewer {new V3d_Viewer(graphic_driver)};
@@ -214,8 +225,7 @@ void GlfwOcctView::on_mouse_move(int pos_x, int pos_y)
     Notes:
         Top level entry point to:
             (1) Create a GLFW window.
-            (2) Create a GlfwOcctWindow object to wrap the GLFW window. This
-                    object is totally indepedent of OCCT.
+            (2) Create a GlfwOcctWindow object to wrap the GLFW window. 
             (3) Register callbacks with GLFW to ensure that the wrapping GlfwOcctWindow 
                     object stays in-sync with the underlying GLFW window 
             (4) Tell OCCT about the OpenGL context underlying the GLFW window (which 

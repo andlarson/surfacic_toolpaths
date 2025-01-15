@@ -5,19 +5,22 @@
 
 // Standard library.
 #include <string>
-#include <cassert>
+#include <stdexcept>
 
 // Third party.
 
 // GLFW
-#include "GLFW/glfw3.h"
-
-#undef Handle 
-// #define GLFW_EXPOSE_NATIVE_COCOA
-// #define GLFW_EXPOSE_NATIVE_NSGL
-#define GLFW_EXPOSE_NATIVE_GLX
-#define GLFW_EXPOSE_NATIVE_X11
-#include "GLFW/glfw3native.h"
+#if defined (__APPLE__)
+    // Work around OCCT's unfortunately named custom smart pointer type.
+    #undef Handle 
+    #define GLFW_EXPOSE_NATIVE_COCOA
+    #define GLFW_EXPOSE_NATIVE_NSGL
+#else
+    #define GLFW_EXPOSE_NATIVE_X11
+    #define GLFW_EXPOSE_NATIVE_GLX
+#endif
+#include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
 
 // Library private.
 #include "glfw_occt_window_p.hxx"
@@ -29,7 +32,8 @@
 GlfwOcctWindow::GlfwOcctWindow(int width, int height, const std::string& title)
 {
     GLFWwindow *res {glfwCreateWindow(width, height, title.c_str(), NULL, NULL)};
-    assert(res != nullptr);
+    if (res == nullptr)
+        throw std::runtime_error("Window creation failed!");
     this->glfw_window = res;
 
     int cur_width = 0, cur_height = 0;
@@ -38,8 +42,16 @@ GlfwOcctWindow::GlfwOcctWindow(int width, int height, const std::string& title)
     this->x_right = x_left + cur_width;
     this->y_bottom = y_top + cur_height;
     
-    // Warning: This is Linux-specific for some reason!!
-    myDisplay = new Aspect_DisplayConnection(glfwGetX11Display());
+#if !defined(__APPLE__)
+    // For reasons that I don't understand, the "display" is only required
+    //     on Linux. The "display" is used to extract an OpenGL graphic driver,
+    //     and apparently on non-Linux systems, an OpenGL graphic driver can
+    //     be extracted without a "display".
+    Display* disp {glfwGetX11Display()};
+    if (disp == nullptr)
+        throw std::runtime_error("Error occurred when getting the display!");
+    this->myDisplay = new Aspect_DisplayConnection(disp);
+#endif
 }
 
 /*
@@ -69,7 +81,17 @@ void GlfwOcctWindow::close()
 */
 Aspect_Drawable GlfwOcctWindow::NativeHandle() const
 {
-    return glfwGetX11Window(this->glfw_window);
+#if defined (__APPLE__)
+    const id window_id {glfwGetCocoaWindow(get_glfw_window())};
+    if (window_id == nil)
+        throw std::runtime_error("Failed to get a Cocoa Window!");
+    return (Aspect_Drawable) window_id; 
+#else
+    const Window window_id {glfwGetX11Window(get_glfw_window())}; 
+    if (window_id == None)
+        throw std::runtime_error("Failed to get an X11 Window!");
+    return (Aspect_Drawable) window_id; 
+#endif
 }
 
 /*
@@ -77,8 +99,17 @@ Aspect_Drawable GlfwOcctWindow::NativeHandle() const
 */
 Aspect_RenderingContext GlfwOcctWindow::opengl_context() const
 {
-    GLXContext res {glfwGetGLXContext(this->glfw_window)};
-    return res;
+#if defined (__APPLE__)
+    const id opengl_context {glfwGetNSGLContext(get_glfw_window())};
+    if (opengl_context == nil)
+        throw std::runtime_error("Failed to get NSGL context!");
+    return (Aspect_RenderingContext) opengl_context; 
+#else
+    const GLXContext opengl_context {glfwGetGLXContext(get_glfw_window())};
+    if (opengl_context == None)
+        throw std::runtime_error("Failed to get NSGL context!");
+    return (Aspect_RenderingContext) opengl_context;
+#endif
 }
 
 /*
