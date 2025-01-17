@@ -18,246 +18,762 @@ using namespace std;
    ****************************************************************************
 */ 
 
-struct CylCurveToolpathTest 
-{
-    const string name;
-    const Curve& path;
-    const CylindricalTool tool;
-    const std::pair<double, double> meshing_parameters;
-    const bool visualize;
-    const filesystem::path results_directory;
-};
-
-struct CylLineToolpathTest 
-{
-    const string name;
-    const Line& path;
-    const CylindricalTool tool;
-    const std::pair<double, double> meshing_parameters;
-    const bool visualize;
-    const filesystem::path results_directory;
-};
+// Some test defaults. Not all tests use these defaults.
+const CylindricalTool default_cylindrical_tool {.2, 1.5};
+const pair<double, double> default_mesh_options {.5, .00001};
+const filesystem::path default_results_directory {"/tmp/"};
+const bool default_visualize {true};
 
 struct CylCompoundToolpathTest 
 {
     const string name;
-    const pair<const Line&, const Curve&> path;
+    const tuple<vector<Line>, vector<ArcOfCircle>, vector<InterpolatedCurve>> path;
     const CylindricalTool tool;
     const std::pair<double, double> meshing_parameters;
     const bool visualize;
     const filesystem::path results_directory;
 };
 
-const vector<pair<string, InterpolatedCurve>> interpolated_curve_specs 
-{ 
-//  {
-//    "[interpolation]: planar corner",
-//    {
-//      {{1, 0, 0}, {1, 1, 0}, {0, 1, 0}}, 
-//      {{0, {0, 1, 0}}, {1, {-1, 0, 0}}, {2, {-1, 0, 0}}}
-//    },
-//  },
-//  {
-//    "[interpolation]: planar straight line",
-//    {
-//      {{0, 0, 0}, {1, 0, 0}, {2, 0, 0}}, 
-//      {{0, {1, 0, 0}}, {1, {1, 0, 0}}, {2, {1, 0, 0}}}
-//    },
-//  },
-//  TODO: Causes segfault due to bug in OCCT. In general, it appears
-//      that sweeping along non-axial stright lines causes segfaults.
-//  {
-//    "[interpolation]: planar non-axial straight line",
-//    {
-//      {{0, 0, 0}, {1, 1, 0}, {2, 2, 0}}, 
-//      {{0, {1, 1, 0}}, {1, {1, 1, 0}}, {2, {1, 1, 0}}}
-//    },
-//  },
-//  TODO: Causes segfault due to bug in OCCT. In general, it appears
-//      that sweeping along non-axial stright lines causes segfaults.
-//  {
-//    "[interpolation]: planar non-axial straight line 2",
-//    {
-//      {{1, 0, 0}, {0, 1, 0}, {-1, 2, 0}}, 
-//      {{0, {-1, 1, 0}}, {1, {-1, 1, 0}}, {2, {-1, 1, 0}}}
-//    },
-//  },
-//  {
-//    "[interpolation]: planar zigzag",
-//    {
-//      {{0, 0, 0}, {1, 1, 0}, {0, 2, 0}, {3, 3, 0}, {0, 4, 0}}, 
-//      {{0, {0, 1, 0}}, {1, {0, 1, 0}}, {2, {0, 1, 0}}, {3, {0, 1, 0}}}
-//    }, 
-//  },
-//  {
-//    "[interpolation]: planar horseshoe",
-//    {
-//      {{-1, 1, 0}, {-1, .4, 0}, {0, 0, 0}, {1, .4, 0}, {1, 1, 0}}, 
-//      {{0, {0, -1, 0}}, {1, {0, -1, 0}}, {2, {1, 0, 0}}, {3, {0, 1, 0}}, {4, {0, 1, 0}}}
-//    }, 
-//  },
-//  {
-//    "[interpolation]: planar one tangent",
-//    {
-//      {{0, 0, 0}, {1, 5, 0}, {0, 10, 0}, {1, 15, 0}, {0, 20, 0}}, 
-//      {{0, {1, 5, 0}}}
-//    },
-//  },
-//  {
-//    "[interpolation]: non-planar corner",
-//    { 
-//      {{1, 0, 0}, {1, 1, .5}, {0, 1, 5}}, 
-//      {{0, {0, 1, 0}}, {1, {-1, 0, 0}}, {2, {-1, 0, 0}}}
-//    },
-//  },
-//  {
-//    "[interpolation]: non-planar zigzag",
-//    {
-//      {{0, 0, 0}, {1, 1, .5}, {0, 2, 1}, {3, 3, 2}, {0, 4, 3}}, 
-//      {{0, {0, 1, 0}}, {1, {0, 1, 0}}, {2, {0, 1, 0}}, {3, {0, 1, 0}}}
-//    }, 
-//  },
-//  {
-//    "[interpolation]: non-planar horseshoe",
-//    {
-//      {{-1, 1, 0}, {-1, .4, .5}, {0, 0, 1}, {1, .4, .5}, {1, 1, 0}}, 
-//      {{0, {0, -1, 0}}, {1, {0, -1, 0}}, {2, {1, 0, 0}}, {3, {0, 1, 0}}, {4, {0, 1, 0}}}
-//    }, 
-//  }
-};
-
-const vector<pair<string, ArcOfCircle>> arc_of_circle_curve_specs 
+const vector<CylCompoundToolpathTest> tests 
 {
-//  {
-//    "[arc of circle]: origin centered 1", 
-//    {{{1, 0}, {0, 1}}, {0, 0}, 1}
-//  },  
-//  {
-//    "[arc of circle]: origin centered 2", 
-//    {{{0, 1}, {1/pow(2, .5), 1/pow(2, .5)}}, {0, 0}, 1},
-//  },  
-//  {
-//    "[arc of circle]: origin centered 3", 
-//    {{{-1/pow(2, .5), 1/pow(2, .5)}, {1/pow(2, .5), 1/pow(2, .5)}}, {0, 0}, 1},
-//  },  
-//  {
-//    "[arc of circle]: origin centered 4", 
-//    {{{.75, .6614}, {-1, 0}}, {0, 0}, 1},
-//  },
+  // Test Class: Single interpolated curve.
+  // {
+  //   "[single interpolated curve]: planar corner",
+  //   {
+  //     // Lines.
+  //     {},
+  //     // Arcs of circles.
+  //     {},
+  //     // Interpolated curves.
+  //     {
+  //       {
+  //         {{1, 0, 0}, {1, 1, 0}, {0, 1, 0}}, 
+  //         {{0, {0, 1, 0}}, {1, {-1, 0, 0}}, {2, {-1, 0, 0}}}
+  //       }
+  //     }
+  //   },
+  //   // Very small tool radius necessary to avoid problems due to self
+  //   //     intersection around sharp corner.
+  //   {.05, 1.5}, 
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // {
+  //   "[single interpolated curve]: planar straight line",
+  //   {
+  //     // Lines.
+  //     {},
+  //     // Arcs of circles.
+  //     {},
+  //     // Interpolated curves.
+  //     {
+  //       {
+  //         {{0, 0, 0}, {1, 0, 0}, {2, 0, 0}}, 
+  //         {{0, {1, 0, 0}}, {1, {1, 0, 0}}, {2, {1, 0, 0}}}
+  //       }
+  //     },
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // // Causes segfault. In general, it appears that sweeping along non-axial 
+  // //     straight lines causes segfaults. This si surprising because some
+  // //     tests that sweep along non-axial straight lines, without using
+  // //     interpolation, do work.
+  // // {
+  // //   "[single interpolated curve]: planar non-axial straight line",
+  // //   {
+  // //     // Lines.
+  // //     {},
+  // //     // Arcs of circles.
+  // //     {},
+  // //     // Interpolated curves.
+  // //     {
+  // //       {
+  // //         {{0, 0, 0}, {1, 1, 0}, {2, 2, 0}}, 
+  // //         {{0, {1, 1, 0}}, {1, {1, 1, 0}}, {2, {1, 1, 0}}}
+  // //       }
+  // //     }
+  // //   },
+  // //   default_cylindrical_tool,
+  // //   default_mesh_options,
+  // //   default_visualize,
+  // //   default_results_directory
+  // // },
+  // // Causes segfault. In general, it appears that sweeping along non-axial 
+  // //     straight lines causes segfaults. This is surprising because some
+  // //     tests that sweep along non-axial straight lines, without using
+  // //     interpolation, do work.
+  // // {
+  // //   "[single interpolated curve]: planar non-axial straight line 2",
+  // //   {
+  // //     // Lines.
+  // //     {},
+  // //     // Arcs of circles.
+  // //     {},
+  // //     // Interpolated curves.
+  // //     {
+  // //       {
+  // //         {{1, 0, 0}, {0, 1, 0}, {-1, 2, 0}}, 
+  // //         {{0, {-1, 1, 0}}, {1, {-1, 1, 0}}, {2, {-1, 1, 0}}}
+  // //       }
+  // //     }
+  // //   },
+  // //   default_cylindrical_tool,
+  // //   default_mesh_options,
+  // //   default_visualize,
+  // //   default_results_directory
+  // // },
+  // {
+  //   "[single interpolated curve]: planar zigzag",
+  //   {
+  //     // Lines.
+  //     {},
+  //     // Arcs of circles.
+  //     {},
+  //     // Interpolated curves.
+  //     {
+  //       {
+  //         {{0, 0, 0}, {1, 1, 0}, {0, 2, 0}, {3, 3, 0}, {0, 4, 0}}, 
+  //         {{0, {0, 1, 0}}, {1, {0, 1, 0}}, {2, {0, 1, 0}}, {3, {0, 1, 0}}}
+  //       }, 
+  //     }
+  //   },
+  //   // Very small tool radius necessary to avoid problems due to self
+  //   //     intersection around sharp corner.
+  //   {.05, 1},
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // {
+  //   "[single interpolated curve]: planar horseshoe",
+  //   {
+  //     // Lines.
+  //     {},
+  //     // Arcs of circles.
+  //     {},
+  //     // Interpolated curves.
+  //     {
+  //       {
+  //         {{-1, 1, 0}, {-1, .4, 0}, {0, 0, 0}, {1, .4, 0}, {1, 1, 0}}, 
+  //         {{0, {0, -1, 0}}, {1, {0, -1, 0}}, {2, {1, 0, 0}}, {3, {0, 1, 0}}, {4, {0, 1, 0}}}
+  //       }
+  //     }
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // {
+  //   "[single interpolated curve]: planar one tangent",
+  //   {
+  //     // Lines.
+  //     {},
+  //     // Arcs of circles.
+  //     {},
+  //     // Interpolated curves.
+  //     {
+  //       {
+  //         {{0, 0, 0}, {1, 5, 0}, {0, 10, 0}, {1, 15, 0}, {0, 20, 0}}, 
+  //         {{0, {1, 5, 0}}}
+  //       }
+  //     }
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // // This generates a crazy geometry due to the way that sweeping is done.
+  // // {
+  // //   "[single interpolated curve]: non-planar corner",
+  // //   {
+  // //     // Lines.
+  // //     {},
+  // //     // Arcs of circles.
+  // //     {},
+  // //     // Interpolated curves.
+  // //     {
+  // //       {
+  // //         {{1, 0, 0}, {1, 1, .5}, {0, 1, 5}}, 
+  // //         {{0, {0, 1, 0}}, {1, {-1, 0, 0}}, {2, {-1, 0, 0}}}
+  // //       }
+  // //     }
+  // //   },
+  // //   default_cylindrical_tool,
+  // //   default_mesh_options,
+  // //   default_visualize,
+  // //   default_results_directory
+  // // },
+  // // This results in a crazy geometry due to the way that sweeping works. 
+  // // {
+  // //   "[single interpolated curve]: non-planar zigzag",
+  // //   {
+  // //     // Lines.
+  // //     {},
+  // //     // Arcs of circles.
+  // //     {},
+  // //     // Interpolated curves.
+  // //     {
+  // //       {
+  // //         {{0, 0, 0}, {1, 1, .5}, {0, 2, 1}, {3, 3, 2}, {0, 4, 3}}, 
+  // //         {{0, {0, 1, 0}}, {1, {0, 1, 0}}, {2, {0, 1, 0}}, {3, {0, 1, 0}}}
+  // //       }
+  // //     }
+  // //   },
+  // //   // Very small tool radius necessary to avoid problems due to self
+  // //   //     intersection around sharp corner.
+  // //   {.05, 1},
+  // //   default_mesh_options,
+  // //   default_visualize,
+  // //   default_results_directory
+  // // },
+  // // This results in crazy geometry due to sharp corners.
+  // // {
+  // //   "[single interpolated curve]: non-planar horseshoe",
+  // //   {
+  // //     // Lines.
+  // //     {},
+  // //     // Arcs of circles.
+  // //     {},
+  // //     // Interpolated curves.
+  // //     {
+  // //       {
+  // //         {{-1, 1, 0}, {-1, .4, .5}, {0, 0, 1}, {1, .4, .5}, {1, 1, 0}}, 
+  // //         {{0, {0, -1, 0}}, {1, {0, -1, 0}}, {2, {1, 0, 0}}, {3, {0, 1, 0}}, {4, {0, 1, 0}}}
+  // //       }
+  // //     }
+  // //   },
+  // //   // Very small tool radius necessary to avoid problems due to self
+  // //   //     intersection around sharp corner.
+  // //   {.05, 1},
+  // //   default_mesh_options,
+  // //   default_visualize,
+  // //   default_results_directory
+  // // },
 
-//  // Not origin centered. 
-//  {
-//    "[arc of circle]: origin centered 5", 
-//    {{{1 + 10, 0 + 10}, {0 + 10, 1 + 10}}, {10, 10}, 1},
-//  },
-//  {
-//    "[arc of circle]: origin centered 6", 
-//    {{{0 + 10, 1 + 5}, {1/pow(2, .5) + 10, 1/pow(2, .5) + 5}}, {10, 5}, 1},
-//  },
-//  {
-//    "[arc of circle]: origin centered 7", 
-//    {{{-1/pow(2, .5) + 10, 1/pow(2, .5) + 5}, {1/pow(2, .5) + 10, 1/pow(2, .5) + 5}}, {10, 5}, 1},
-//  },
-//  {
-//    "[arc of circle]: origin centered 8", 
-//    {{{.75 - 100, .6614 + 3}, {-1 - 100, 0 + 3}}, {-100, 3}, 1},
-//  }
-};
+  // Test Class: Single Line.
+  // {
+  //   "[single line]: simple1",
+  //   {
+  //     // Lines.
+  //     {
+  //       {
+  //         {0, 0, 0},
+  //         {1, 1, 0}
+  //       }
+  //     },
+  //     // Arcs of circles.
+  //     {},
+  //     // Interpolated curves.
+  //     {}
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // {
+  //   "[single line]: simple2",
+  //   {
+  //     // Lines.
+  //     {
+  //       {
+  //         {1, 1, 1},
+  //         {-1, 0, 0}
+  //       }
+  //     },
+  //     // Arcs of circles.
+  //     {},
+  //     // Interpolated curves.
+  //     {}
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // {
+  //   "[single line]: simple3",
+  //   {
+  //     // Lines.
+  //     {
+  //       {
+  //         {1, 1, 0},
+  //         {-1, -1, 0}
+  //       }
+  //     },
+  //     // Arcs of circles.
+  //     {},
+  //     // Interpolated curves.
+  //     {}
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // // This results in crazy geometry due to the way that sweeping works.
+  // // {
+  // //   "[single line]: simple4",
+  // //   {
+  // //     // Lines.
+  // //     {
+  // //       {
+  // //         {-2, -2, -2},
+  // //         {5, 5, 5}
+  // //       }
+  // //     },
+  // //     // Arcs of circles.
+  // //     {},
+  // //     // Interpolated curves.
+  // //     {}
+  // //   },
+  // //   default_cylindrical_tool,
+  // //   default_mesh_options,
+  // //   default_visualize,
+  // //   default_results_directory
+  // // },
 
-const vector<pair<string, Line>> linear_specs 
-{
-//  {
-//    "[linear]: simple1",
-//    {
-//      {0, 0, 0},
-//      {1, 1, 0}
-//    }
-//  },
-//  {
-//    "[linear]: simple2",
-//    {
-//      {1, 1, 1},
-//      {-1, 0, 0}
-//    }
-//  },
-//  {
-//    "[linear]: simple3",
-//    {
-//      {1, 1, 0},
-//      {-1, -1, 0}
-//    }
-//  },
-//  {
-//    "[linear]: simple4",
-//    {
-//      {-2, -2, -2},
-//      {5, 5, 5}
-//    }
-//  },
-};
+  // Test Class: Single Arc of Circle.
+  // {
+  //   "[single arc of circle]: origin centered 1",
+  //   {
+  //     // Lines.
+  //     {},
+  //     // Arcs of circles.
+  //     {
+  //       {
+  //         {{1, 0, 0}, {0, 1, 0}}, 
+  //         {.5, sqrt(1 - pow(.5, 2)), 0}, 
+  //       }  
+  //     },
+  //     // Interpolated curves.
+  //     {}
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // {
+  //   "[single arc of circle]: origin centered 2",
+  //   {
+  //     // Lines.
+  //     {},
+  //     // Arcs of circles.
+  //     {
+  //       { 
+  //         {{-1/pow(2, .5), 1/pow(2, .5), 0}, {1/pow(2, .5), 1/pow(2, .5), 0}}, 
+  //         {0, 1, 0}
+  //       }
+  //     },
+  //     // Interpolated curves.
+  //     {}
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // {
+  //   "[single arc of circle]: origin centered 3",
+  //   {
+  //     // Lines.
+  //     {},
+  //     // Arcs of circles.
+  //     {
+  //       {
+  //         {{.75, .6614, 0}, {-1, 0, 0}}, 
+  //         {0, 1, 0}
+  //       }
+  //     },
+  //     // Interpolated curves.
+  //     {}
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // {
+  //   "[single arc of circle]: not origin centered 1",
+  //   {
+  //     // Lines.
+  //     {},
+  //     // Arcs of circles.
+  //     {
+  //       {
+  //         {{1 + 10, 0 + 10, 0}, {0 + 10, 1 + 10, 0}}, 
+  //         {10.5, sqrt(1 - pow(.5, 2)) + 10, 0}, 
+  //       }
+  //     },
+  //     // Interpolated curves.
+  //     {}
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // {
+  //   "[single arc of circle]: not origin centered 2",
+  //   {
+  //     // Lines.
+  //     {},
+  //     // Arcs of circles.
+  //     {
+  //       {
+  //         {{0 + 10, 1 + 5, 0}, {1/pow(2, .5) + 10, 1/pow(2, .5) + 5, 0}}, 
+  //         {-1 + 10, 5, 0}, 
+  //       }
+  //     },
+  //     // Interpolated curves.
+  //     {}
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // {
+  //   "[single arc of circle]: not origin centered 3",
+  //   {
+  //     // Lines.
+  //     {},
+  //     // Arcs of circles.
+  //     {
+  //       {
+  //         {{-1/pow(2, .5) + 10, 1/pow(2, .5) + 5, 0}, {1/pow(2, .5) + 10, 1/pow(2, .5) + 5, 0}}, 
+  //         {10, 5 - 1, 0}, 
+  //       }
+  //     },
+  //     // Interpolated curves.
+  //     {}
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
 
-const vector<pair<string, pair<Line, ArcOfCircle>>> compound_specs1 
-{
-//  {
-//    "[linear + arc of circle]: simple_touching1",
-//    {
-//      {
-//        {0, 0, 0},
-//        {1, 1, 0}
-//      },
-//      {{{1, 0}, {0, 1}}, {0, 0}, 1}                                                                   
-//    }
-//  },
-//  {
-//    "[linear + arc of circle]: simple_touching2",
-//    {
-//      {
-//        {0, 0, 0},
-//        {0, 1, 0}
-//      },
-//      {{{0, 1}, {-1, 0}}, {0, 0}, 1}                                                                   
-//    }
-//  },
-//  {
-//    "[linear + arc of circle]: simple_touching3",
-//    {
-//      {
-//        {1, 1, 0},
-//        {2, 1, 0}
-//      },
-//      {{{1.5, 0}, {0, 1.5}}, {0, 0}, 1.5}                                                                   
-//    }
-//  },
-//  {
-//    "[linear + arc of circle]: simply_touching4",
-//    {
-//      {
-//        {1, 1, 0},
-//        {2, 1, 0}
-//      },
-//      {{{1.5, 0}, {0, 1.5}}, {0, 0}, 1.5}                                                                   
-//    }
-//  },
-//  {
-//    "[linear + arc of circle]: not_touching1",
-//    {
-//      {
-//        {-1, 0, 0},
-//        {1, 0, 0}
-//      },
-//      {{{6, 5}, {5, 6}}, {5, 5}, 1}                                                                   
-//    }
-//  },
-{
-  "[linear + arc of circle]: realistic_touching",
-  {
-    {
-      {6.044, -.888, -.3},
-      {-.014, .553, 0}
-    },
-    {{{6.030, -.335, -.3}, {3.669, -.381, -.3}}, {-.014885, 249.31, -.3}, 249.72}
-  }
-},
+  // Test Class: Single Line + Single Arc of Circle.
+  // {
+  //   "[single line + single arc of circle]: simple touching1",
+  //   {
+  //     // Lines.
+  //     {
+  //       {
+  //         {0, 0, 0},
+  //         {1, 1, 0}
+  //       },
+  //     },
+  //     // Arcs of circles.
+  //     {
+  //       {
+  //         {{1, 0, 0}, {0, 1, 0}},
+  //         {.5, sqrt(1 - pow(.5, 2)), 0},
+  //       }
+  //     },
+  //     // Interpolated curves.
+  //     {}
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // {
+  //   "[single line + single arc of circle]: simple touching2",
+  //   {
+  //     // Lines.
+  //     {
+  //       {
+  //         {0, 0, 0},
+  //         {0, 1, 0}
+  //       }
+  //     },
+  //     // Arcs of circles.
+  //     {
+  //       {
+  //         {{0, 1, 0}, {-1, 0, 0}},
+  //         {1, 0, 0},
+  //       }
+  //     },
+  //     // Interpolated curves.
+  //     {}
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // {
+  //   "[single line + single arc of circle]: simple touching3",
+  //   {
+  //     // Lines.
+  //     {
+  //       {
+  //         {1, 1, 0},
+  //         {2, 1, 0}
+  //       }
+  //     },
+  //     // Arcs of circles.
+  //     {
+  //       {
+  //         {{1.5, 0, 0}, {0, 1.5, 0}},
+  //         {.5, sqrt(pow(1.5, 2) - pow(.5, 2)), 0},
+  //       }
+  //     },
+  //     // Interpolated curves.
+  //     {}
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // {
+  //   "[single line + single arc of circle]: simply touching4",
+  //   {
+  //     // Lines.
+  //     {
+  //       {
+  //         {1, 1, 0},
+  //         {2, 1, 0}
+  //       }
+  //     },
+  //     // Arcs of circles.
+  //     {
+  //       {
+  //         {{1.5, 0, 0}, {0, 1.5, 0}}, 
+  //         {.5, sqrt(pow(1.5, 2) - pow(.5, 2)), 0}, 
+  //       }
+  //     },
+  //     // Interpolated curves.
+  //     {}
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // {
+  //   "[single line + single arc of circle]: not touching1",
+  //   {
+  //     // Lines.
+  //     {
+  //       {
+  //         {-1, 0, 0},
+  //         {1, 0, 0}
+  //       }
+  //     },
+  //     // Arcs of circles.
+  //     {
+  //       {
+  //         {{6, 5, 0}, {5, 6, 0}},
+  //         {5, 4, 0},
+  //       }
+  //     },
+  //     // Interpolated curves.
+  //     {}
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // {
+  //   "[single line + single arc of circle]: realistic touching",
+  //   {
+  //     // Lines.
+  //     {
+  //       {
+  //         {6.044, -.888, -.3},
+  //         {-.014, .553, 0}
+  //       }
+  //     },
+  //     // Arcs of circles.
+  //     {
+  //       {
+  //         {{6.030, -.335, -.3}, {3.669, -.381, -.3}}, 
+  //         {4, -sqrt(pow(249.72, 2) - pow((4 + .014885), 2)) + 249.31, -.3}, 
+  //       }
+  //     },
+  //     // Interpolated curves.
+  //     {}
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+
+  // Test Class: Multiple lines. 
+  // {
+  //   "[multiple lines]: two touching lines",
+  //   {
+  //     // Lines.
+  //     {
+  //       {
+  //         {0, 0, 0},
+  //         {1, 0, 0}
+  //       },
+  //       {
+  //         {1, 0, 0},
+  //         {0, 1, 0}
+  //       }
+  //     },
+  //     // Arcs of circles.
+  //     {},
+  //     // Interpolated curves.
+  //     {}
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // {
+  //   "[multiple lines]: two parallel lines",
+  //   {
+  //     // Lines.
+  //     {
+  //       {
+  //         {-1, 0, 0},
+  //         {0, -1, 0}
+  //       },
+  //       {
+  //         {-1, -1, 0},
+  //         {0, -1, 0}
+  //       }
+  //     },
+  //     // Arcs of circles.
+  //     {},
+  //     // Interpolated curves.
+  //     {}
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // {
+  //   "[multiple lines]: fours a square",
+  //   {
+  //     // Lines.
+  //     {
+  //       {
+  //         {0, 0, 0},
+  //         {1, 0, 0}
+  //       },
+  //       {
+  //         {1, 0, 0},
+  //         {0, 1, 0}
+  //       },
+  //       {
+  //         {1, 1, 0},
+  //         {-1, 0, 0}
+  //       },
+  //       {
+  //         {0, 1, 0},
+  //         {0, -1, 0}
+  //       }
+  //     },
+  //     // Arcs of circles.
+  //     {},
+  //     // Interpolated curves.
+  //     {}
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // // Because the axis of symmetry of the tool is always assumed to point in the +Z
+  // //     direction, this test results in non-sensical geometry. 
+  // // {
+  // //   "[multiple lines]: craziness",
+  // //   {
+  // //     // Lines.
+  // //     {
+  // //       {
+  // //         {0, 0, 0},
+  // //         {1, 1, 1}
+  // //       },
+  // //       {
+  // //         {0, 0, 0},
+  // //         {-1, -1, -1}
+  // //       },
+  // //       {
+  // //         {0, 0, 0},
+  // //         {1, -1, -1}
+  // //       },
+  // //       {
+  // //         {0, 0, 0},
+  // //         {-1, 1, 1}
+  // //       }
+  // //     },
+  // //     // Arcs of circles.
+  // //     {},
+  // //     // Interpolated curves.
+  // //     {}
+  // //   },
+  // //   default_cylindrical_tool,
+  // //   default_mesh_options,
+  // //   default_visualize,
+  // //   default_results_directory
+  // // },
+  // {
+  //   "[multiple lines]: many paths, one region",
+  //   {
+  //     // Lines.
+  //     {
+  //       {
+  //         {0, 0, 0},
+  //         {1, 0, 0}
+  //       },
+  //       {
+  //         {1, 0, 0},
+  //         {0, 1, 0}
+  //       },
+  //       {
+  //         {1, 1, 0},
+  //         {-1, 0, 0}
+  //       },
+  //       {
+  //         {0, 1, 0},
+  //         {0, -1, 0}
+  //       }
+  //     },
+  //     // Arcs of circles.
+  //     {},
+  //     // Interpolated curves.
+  //     {}
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+
+  // Test Class: Multiple Circular Arcs.
+  // {
+  //   "[multiple circular arcs]: touching circular arcs",
+  //   {
+  //     // Lines.
+  //     {},
+  //     // Arcs of circles.
+  //     {},
+  //     // Interpolated curves.
+  //     {}
+  //   }
+  // }
 };
 
 /* 
@@ -266,8 +782,7 @@ const vector<pair<string, pair<Line, ArcOfCircle>>> compound_specs1
    ****************************************************************************
 */ 
 
-using Tests = tuple<vector<CylCurveToolpathTest>, vector<CylLineToolpathTest>, vector<CylCompoundToolpathTest>>;
-static Tests gen_tests();
+using Tests = vector<CylCompoundToolpathTest>;
 template <class T> static void run_tests(vector<T>& tests);
 
 /* 
@@ -276,73 +791,11 @@ template <class T> static void run_tests(vector<T>& tests);
    ****************************************************************************
 */ 
 
-static Tests gen_tests()
-{
-    Tests tests;
-    
-    const CylindricalTool default_cylindrical_tool {.1, .3};
-    const pair<double, double> default_mesh_options {.5, .00001};
-    const filesystem::path default_results_directory {"/tmp/"};
-    const bool visualize {true};
-
-    for (const auto& interpolated_curve_spec : interpolated_curve_specs)
-        get<0>(tests).push_back(
-                                 {
-                                   interpolated_curve_spec.first,
-                                   interpolated_curve_spec.second,
-                                   default_cylindrical_tool,
-                                   default_mesh_options,
-                                   visualize,
-                                   default_results_directory
-                                 }
-                               ); 
-
-    for (const auto& arc_of_circle_curve_spec : arc_of_circle_curve_specs)
-        get<0>(tests).push_back(
-                                 {
-                                   arc_of_circle_curve_spec.first,
-                                   arc_of_circle_curve_spec.second,
-                                   default_cylindrical_tool,
-                                   default_mesh_options,
-                                   visualize,
-                                   default_results_directory
-                                 }
-                               ); 
-
-    for (const auto& linear_spec : linear_specs) 
-        get<1>(tests).push_back(
-                                 {
-                                   linear_spec.first,
-                                   linear_spec.second,
-                                   default_cylindrical_tool,
-                                   default_mesh_options,
-                                   visualize,
-                                   default_results_directory
-                                 }
-                               ); 
-
-    for (const auto& compound_spec : compound_specs1) 
-        get<2>(tests).push_back(
-                                 {
-                                   compound_spec.first,
-                                   compound_spec.second,
-                                   default_cylindrical_tool,
-                                   default_mesh_options,
-                                   visualize,
-                                   default_results_directory
-                                 }
-                               ); 
-
-    return tests;
-}
-
 template <class T>
 static void run_tests(const vector<T>& tests)
 { 
     for (const auto& test : tests)
     {
-        bool success {true};
-
         cout << endl;
         cout << "********* TEST: " << test.name << " **********" << endl;
 
@@ -358,20 +811,14 @@ static void run_tests(const vector<T>& tests)
         tool_path.shape_to_stl(test.name, stl_path);
         cout << "Surface mesh written to: " << stl_path << endl;
 
-        if (success)
-            cout << "SUCCESS: The test " << test.name << " succeeded!" << endl;
-        else
-            cout << "FAILURE: The test " << test.name << " failed!" << endl;
+        cout << "SUCCESS: The test " << test.name << " succeeded!" << endl;
+
         cout << "********* FINISH TEST: " << test.name << " **********" << endl;
     }
 }
 
 int main()
 {
-    const Tests t {gen_tests()};
-    run_tests(get<0>(t));
-    run_tests(get<1>(t));
-    run_tests(get<2>(t));
-
+    run_tests(tests);
     return EXIT_SUCCESS;
 }

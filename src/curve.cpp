@@ -96,48 +96,33 @@ InterpolatedCurve::InterpolatedCurve(const std::vector<Point3D>& interpolation_p
 }
 
 /*
-    Defines an arc that is a part of a circle.
+    Defines an arc that is part of a circle.
+
+    Note:
+        OCCT does not document to what precision the three points must actually
+            form the arc of a circle. For example, if the end points are specified
+            as (1, 0, 0) and (0, 1, 0) and the interior point is specified as
+            (.5, .866, 0) is that sufficient? Or would the interior point need
+            to be specified as (.5, .8660254038, 0)? I'm not sure what the answer
+            to this question is, so it's safest to be as precise as possible.
     
-    Requires that:
-        (1) The endpoints of the arc both lie on the ball defined by the center
-                and the radius.
-        (2) The arc endpoints do not form a perfect half circle.
+    Assumes:
+        (1) The endpoints and the interior point actually define an arc of a
+                circle. For example, three collinear points don't define an
+                arc of a circle.
     
     Arguments:
-        arc_endpoints: The endpoints of the arc. Two endpoints, a center, and a
-                           radius don't fully specify the arc. They specify two
-                           possible arcs. The arc produced by this
-                           implementation depends on the ordering of the arc
-                           endpoints passed to it.
-        center:        The centerpoint of the circle.
-        radius:        The radius of the circle.
+        arc_endpoints:      The two endpoints of the arc. 
+        arc_interior_point: The interior point of the arc. 
 */
 ArcOfCircle::ArcOfCircle(const std::pair<Point3D, Point3D>& arc_endpoints,
-                         const Point3D& center,
-                         const double radius)
+                         const Point3D& arc_interior_point)
 {
-    // In order to build the circle with the chosen API, it's necessary to
-    //     define the circle's axis. The axis lies at the center of the circle
-    //     and the z-direction of the axis defines the normal to the circle.
-    // The user passes the center point of the circle, but it's necessary to
-    //     compute the z-direction using the cross product.
-    // Warning: The normal to the resulting circle is not explicitly chosen
-    //     - it ends up being whatever the result of the cross product is.
-    const gp_Pnt arc_endpoint1 {arc_endpoints.first[0], arc_endpoints.first[1], arc_endpoints.first[2]};
-    const gp_Pnt arc_endpoint2 {arc_endpoints.second[0], arc_endpoints.second[1], arc_endpoints.second[2]};
-    const gp_Pnt centerpoint {center[0], center[1], center[2]};
-
-    gp_Vec center_to_ep1 {centerpoint, arc_endpoint1};
-    const gp_Vec center_to_ep2 {centerpoint, arc_endpoint2};
-    center_to_ep1.Cross(center_to_ep2);
-
-    const gp_Ax1 circle_axis {centerpoint, center_to_ep1};
-
-    const GC_MakeCircle circle_maker {circle_axis, radius};
-    const Handle(Geom_Circle) circle {circle_maker.Value()};
-
-    // Now use the circle to build the arc. 
-    const GC_MakeArcOfCircle arc_maker {(*circle).Circ(), arc_endpoint1, arc_endpoint2, true}; 
+    const gp_Pnt arc_endpoint1 {arc_endpoints.first.at(0), arc_endpoints.first.at(1), arc_endpoints.first.at(2)};
+    const gp_Pnt arc_endpoint2 {arc_endpoints.second.at(0), arc_endpoints.second.at(1), arc_endpoints.second.at(2)};
+    const gp_Pnt arc_interior_point1 {arc_interior_point.at(0), arc_interior_point.at(1), arc_interior_point.at(2)};
+    // Documentation of point ordering for GC_MakeArcOfCircle is incorrect!
+    const GC_MakeArcOfCircle arc_maker {arc_endpoint1, arc_interior_point1, arc_endpoint2}; 
     const Handle(Geom_TrimmedCurve) arc {arc_maker.Value()};
 
     this->representation = GeomConvert::CurveToBSplineCurve(arc);

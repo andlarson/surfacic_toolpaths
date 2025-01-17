@@ -65,12 +65,6 @@ static gp_Dir compute_average_vec(const std::vector<gp_Vec>& vecs);
     Constructs a face with the center point of the bottom edge at a passed point
         in space and with normal lying in some direction. 
 
-    Requires that:
-        (1) The normal lies in the XY-plane.
-
-    Assumes that:
-        (1) The face extends in the +Z direction.
-
     Notes for future improvement:
         A point, a direction, a width and a height, taken together, are
             insufficient to describe the location of a rectangle in space.
@@ -87,6 +81,12 @@ static gp_Dir compute_average_vec(const std::vector<gp_Vec>& vecs);
             trimmed surface. This isn't viable because (as best I understand it)
             rectangular trimmed surfaces only permit rectangles that are
             axis-aligned to be represented. This isn't sufficiently general.
+
+    Requires:
+        (1) The normal lies in the XY-plane.
+
+    Assumes:
+        (1) The face extends in the +Z direction.
 
     Arguments:
         normal:       Normal to the face. Must lie in the xy-plane.
@@ -197,7 +197,7 @@ static gp_Dir compute_average_vec(const std::vector<gp_Vec>& vecs)
 /*
     Builds a cylinder at a point with axis of rotation in the +Z direction. 
     
-    Assumes that:
+    Assumes:
         (1) The axis of rotation of the cylinder should be in the +Z direction.
     
     Arguments:
@@ -222,37 +222,29 @@ static TopoDS_Shape build_vertical_cylinder(const gp_Pnt& loc,
 /*
     See callees for documentation.
 */
-ToolPath::ToolPath(const Curve& curve,
+ToolPath::ToolPath(const std::tuple<std::vector<Line>, 
+                                    std::vector<ArcOfCircle>,
+                                    std::vector<InterpolatedCurve>> compound,
                    const CylindricalTool& profile,
                    const bool display)
 {
-    const TopoDS_Shape curved {curved_toolpath(curve, profile, display)};
-    add_shape(curved);
-}
+    for (const Line& l : get<0>(compound))
+    {
+        const TopoDS_Shape linear {linear_toolpath(l, profile, display)};
+        add_shape(linear);
+    }
 
-/*
-    See callees for documentation.
-*/
-ToolPath::ToolPath(const Line& line,
-                   const CylindricalTool& profile,
-                   const bool display)
-{
-    const TopoDS_Shape linear {linear_toolpath(line, profile, display)};
-    add_shape(linear);
-}
+    for (const ArcOfCircle& c : get<1>(compound))
+    {
+        const TopoDS_Shape curved {curved_toolpath(c, profile, display)};
+        add_shape(curved);
+    }
 
-/*
-    See callees for documentation.
-*/
-ToolPath::ToolPath(const std::pair<const Line&, const Curve&> compound,
-                   const CylindricalTool& profile,
-                   const bool display)
-{
-    const TopoDS_Shape linear {linear_toolpath(compound.first, profile, display)};
-    add_shape(linear);
-
-    const TopoDS_Shape curved {curved_toolpath(compound.second, profile, display)};
-    add_shape(curved);
+    for (const InterpolatedCurve& c : get<2>(compound))
+    {
+        const TopoDS_Shape curved {curved_toolpath(c, profile, display)};
+        add_shape(curved);
+    }
 
     if (display)
     {
@@ -264,15 +256,16 @@ ToolPath::ToolPath(const std::pair<const Line&, const Curve&> compound,
 
 /*
     Generates a surface mesh on the toolpath topology.
-
-    If the input topology is weird, then this function can fail/take a long
-        time. There is no formal definition of weird and therefore this
-        function cannot test for weirdness, so to be safe, you should visualize
-        the topology you are trying to mesh before calling this function.
-        For example, if the topology contains self intersections, mesh
-        generation may not fail, but it will take tons of time.
-    There is no guarantee that the produced surface mesh is any good. The caller
-        is responsible for checking its quality. This function is best effort.
+    
+    Note:
+        If the input topology is weird, then this function can fail/take a long
+            time. There is no formal definition of weird and therefore this
+            function cannot test for weirdness, so to be safe, you should visualize
+            the topology you are trying to mesh before calling this function.
+            For example, if the topology contains self intersections, mesh
+            generation may not fail, but it will take tons of time.
+        There is no guarantee that the produced surface mesh is any good. The caller
+            is responsible for checking its quality. This function is best effort.
     
     Arguments:
         angle:      Maximum angular deflection allowed when generating surface mesh. 
@@ -386,9 +379,7 @@ void ToolPath::shape_to_stl(const std::string solid_name,
 void ToolPath::add_shape(const TopoDS_Shape& s)
 {
     if (this->toolpath_shape_union.IsNull())
-    {
         this->toolpath_shape_union = s;
-    }
     else
     {
         BRepAlgoAPI_Fuse toolpath_union {this->toolpath_shape_union, s};
@@ -400,7 +391,7 @@ void ToolPath::add_shape(const TopoDS_Shape& s)
 /*
     Sweeps a profile along a curve and adds caps, forming a curved toolpath.
     
-    Requires that:
+    Requires:
         (1) The tangent at the first point on the curve lies on a plane parallel
                 to the XY-plane. 
         (2) The tangent at the last point on the curve lies on a plane parallel
@@ -408,7 +399,7 @@ void ToolPath::add_shape(const TopoDS_Shape& s)
         (3) The curve is G1 continuous.
         (4) The toolpath does not intersect itself. 
 
-    Assumes that:
+    Assumes:
         (1) The rotational axis of symmetry of the tool profile points in the +Z
                 direction at the first point on the curve. This affects how the
                 caps are built.
@@ -510,9 +501,9 @@ TopoDS_Shape ToolPath::curved_toolpath(const Curve& curve,
 /*
     Sweeps a profile along a line and adds caps, forming a linear toolpath.
     
-    Assumes that:
+    Assumes:
         (1) The rotational axis of symmetry of the tool profile points in the +Z
-                direction. This affects how the caps are built.
+                direction. 
         (2) The curve describes the path taken in space by the center point of
                 the bottom of the tool.
 

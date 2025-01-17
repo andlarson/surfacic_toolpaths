@@ -13,6 +13,8 @@
 class Curve;
 class CylindricalTool;
 class Line;
+class ArcOfCircle;
+class InterpolatedCurve;
 
 class ToolPath
 {
@@ -29,15 +31,9 @@ class ToolPath
                                  const bool display=false) const;
 
 public:
-    ToolPath(const Curve& curve,
-             const CylindricalTool& profile,
-             const bool display=false);
-    
-    ToolPath(const Line& line,
-             const CylindricalTool& profile,
-             const bool display=false);
-
-    ToolPath(const std::pair<const Line&, const Curve&> compound,
+    ToolPath(const std::tuple<std::vector<Line>, 
+                              std::vector<ArcOfCircle>,
+                              std::vector<InterpolatedCurve>> compound,
              const CylindricalTool& profile,
              const bool display=false);
 
@@ -81,7 +77,7 @@ class ArcOfCircle : public Curve
 {
 public:
     ArcOfCircle(const std::pair<Point3D, Point3D>& arc_endpoints,
-                const Point3D& center, const double radius);
+                const Point3D& interior_point);
 };
 
 class Line : public Path
