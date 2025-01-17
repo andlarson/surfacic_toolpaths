@@ -402,6 +402,26 @@ const vector<CylCompoundToolpathTest> tests
   //   default_results_directory
   // },
   // {
+  //   "[single arc of circle]: origin centered 4, almost full circle",
+  //   {
+  //     // Lines.
+  //     {},
+  //     // Arcs of circles.
+  //     {
+  //       {
+  //         {{1, 0, 0}, {.995, -sqrt(1 - pow(.995, 2)), 0}}, 
+  //         {0, 1, 0}
+  //       }
+  //     },
+  //     // Interpolated curves.
+  //     {}
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // {
   //   "[single arc of circle]: not origin centered 1",
   //   {
   //     // Lines.

@@ -110,6 +110,7 @@ InterpolatedCurve::InterpolatedCurve(const std::vector<Point3D>& interpolation_p
         (1) The endpoints and the interior point actually define an arc of a
                 circle. For example, three collinear points don't define an
                 arc of a circle.
+        (2) The arc does not form a full circle!
     
     Arguments:
         arc_endpoints:      The two endpoints of the arc. 
