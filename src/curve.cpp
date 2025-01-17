@@ -14,11 +14,8 @@
 #include "Standard_Handle.hxx"
 #include "GC_MakeCircle.hxx"
 #include "GC_MakeArcOfCircle.hxx"
-#include "gp_Ax1.hxx"
 #include "gp_Vec.hxx"
-#include "gp_Dir.hxx"
 #include "gp_Pnt.hxx"
-#include "gp_Circ.hxx"
 
 // Library public.
 #include "geometric_primitives.hxx"
@@ -127,4 +124,30 @@ ArcOfCircle::ArcOfCircle(const std::pair<Point3D, Point3D>& arc_endpoints,
     const Handle(Geom_TrimmedCurve) arc {arc_maker.Value()};
 
     this->representation = GeomConvert::CurveToBSplineCurve(arc);
+}
+
+/*
+    Defines a circle.
+
+    Note:
+        OCCT does not document to what precision the three points must actually
+            form a circle. It's safest to be as precise as possible.
+
+    Assumes:
+        (1) The points all lie on a single circle.
+
+    Arguments:
+        p1: First point.
+        p2: Second point.
+        p3: Third point.
+*/
+Circle::Circle(const Point3D& p1, const Point3D& p2, const Point3D& p3)
+{
+    const gp_Pnt circle_p1 {p1.at(0), p1.at(1), p1.at(2)};
+    const gp_Pnt circle_p2 {p2.at(0), p2.at(1), p2.at(2)};
+    const gp_Pnt circle_p3 {p3.at(0), p3.at(1), p3.at(2)};
+    const GC_MakeCircle circle_maker {circle_p1, circle_p2, circle_p3};
+    const Handle(Geom_Circle) circle {circle_maker.Value()};
+
+    this->representation = GeomConvert::CurveToBSplineCurve(circle);
 }

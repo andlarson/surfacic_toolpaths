@@ -27,7 +27,10 @@ const bool default_visualize {true};
 struct CylCompoundToolpathTest 
 {
     const string name;
-    const tuple<vector<Line>, vector<ArcOfCircle>, vector<InterpolatedCurve>> path;
+    const tuple<vector<Line>, 
+                vector<ArcOfCircle>, 
+                vector<InterpolatedCurve>,
+                vector<Circle>> path;
     const CylindricalTool tool;
     const std::pair<double, double> meshing_parameters;
     const bool visualize;
@@ -36,7 +39,7 @@ struct CylCompoundToolpathTest
 
 const vector<CylCompoundToolpathTest> tests 
 {
-  // Test Class: Single interpolated curve.
+  // // Test Class: Single interpolated curve.
   // {
   //   "[single interpolated curve]: planar corner",
   //   {
@@ -50,7 +53,9 @@ const vector<CylCompoundToolpathTest> tests
   //         {{1, 0, 0}, {1, 1, 0}, {0, 1, 0}}, 
   //         {{0, {0, 1, 0}}, {1, {-1, 0, 0}}, {2, {-1, 0, 0}}}
   //       }
-  //     }
+  //     },
+  //     // Circles
+  //     {}
   //   },
   //   // Very small tool radius necessary to avoid problems due to self
   //   //     intersection around sharp corner.
@@ -73,6 +78,8 @@ const vector<CylCompoundToolpathTest> tests
   //         {{0, {1, 0, 0}}, {1, {1, 0, 0}}, {2, {1, 0, 0}}}
   //       }
   //     },
+  //     // Circles
+  //     {}
   //   },
   //   default_cylindrical_tool,
   //   default_mesh_options,
@@ -96,7 +103,9 @@ const vector<CylCompoundToolpathTest> tests
   // //         {{0, 0, 0}, {1, 1, 0}, {2, 2, 0}}, 
   // //         {{0, {1, 1, 0}}, {1, {1, 1, 0}}, {2, {1, 1, 0}}}
   // //       }
-  // //     }
+  // //     },
+  // //     // Circles.
+  // //     {}
   // //   },
   // //   default_cylindrical_tool,
   // //   default_mesh_options,
@@ -120,7 +129,9 @@ const vector<CylCompoundToolpathTest> tests
   // //         {{1, 0, 0}, {0, 1, 0}, {-1, 2, 0}}, 
   // //         {{0, {-1, 1, 0}}, {1, {-1, 1, 0}}, {2, {-1, 1, 0}}}
   // //       }
-  // //     }
+  // //     },
+  // //     // Circles.
+  // //     {}
   // //   },
   // //   default_cylindrical_tool,
   // //   default_mesh_options,
@@ -140,7 +151,9 @@ const vector<CylCompoundToolpathTest> tests
   //         {{0, 0, 0}, {1, 1, 0}, {0, 2, 0}, {3, 3, 0}, {0, 4, 0}}, 
   //         {{0, {0, 1, 0}}, {1, {0, 1, 0}}, {2, {0, 1, 0}}, {3, {0, 1, 0}}}
   //       }, 
-  //     }
+  //     },
+  //     // Circles
+  //     {}
   //   },
   //   // Very small tool radius necessary to avoid problems due to self
   //   //     intersection around sharp corner.
@@ -162,7 +175,9 @@ const vector<CylCompoundToolpathTest> tests
   //         {{-1, 1, 0}, {-1, .4, 0}, {0, 0, 0}, {1, .4, 0}, {1, 1, 0}}, 
   //         {{0, {0, -1, 0}}, {1, {0, -1, 0}}, {2, {1, 0, 0}}, {3, {0, 1, 0}}, {4, {0, 1, 0}}}
   //       }
-  //     }
+  //     },
+  //     // Circles
+  //     {}
   //   },
   //   default_cylindrical_tool,
   //   default_mesh_options,
@@ -182,7 +197,9 @@ const vector<CylCompoundToolpathTest> tests
   //         {{0, 0, 0}, {1, 5, 0}, {0, 10, 0}, {1, 15, 0}, {0, 20, 0}}, 
   //         {{0, {1, 5, 0}}}
   //       }
-  //     }
+  //     },
+  //     // Circles
+  //     {}
   //   },
   //   default_cylindrical_tool,
   //   default_mesh_options,
@@ -203,7 +220,9 @@ const vector<CylCompoundToolpathTest> tests
   // //         {{1, 0, 0}, {1, 1, .5}, {0, 1, 5}}, 
   // //         {{0, {0, 1, 0}}, {1, {-1, 0, 0}}, {2, {-1, 0, 0}}}
   // //       }
-  // //     }
+  // //     },
+  // //     // Circles.
+  // //     {}
   // //   },
   // //   default_cylindrical_tool,
   // //   default_mesh_options,
@@ -224,7 +243,9 @@ const vector<CylCompoundToolpathTest> tests
   // //         {{0, 0, 0}, {1, 1, .5}, {0, 2, 1}, {3, 3, 2}, {0, 4, 3}}, 
   // //         {{0, {0, 1, 0}}, {1, {0, 1, 0}}, {2, {0, 1, 0}}, {3, {0, 1, 0}}}
   // //       }
-  // //     }
+  // //     },
+  // //     // Circles.
+  // //     {}
   // //   },
   // //   // Very small tool radius necessary to avoid problems due to self
   // //   //     intersection around sharp corner.
@@ -247,7 +268,9 @@ const vector<CylCompoundToolpathTest> tests
   // //         {{-1, 1, 0}, {-1, .4, .5}, {0, 0, 1}, {1, .4, .5}, {1, 1, 0}}, 
   // //         {{0, {0, -1, 0}}, {1, {0, -1, 0}}, {2, {1, 0, 0}}, {3, {0, 1, 0}}, {4, {0, 1, 0}}}
   // //       }
-  // //     }
+  // //     },
+  // //     // Circles.
+  // //     {}
   // //   },
   // //   // Very small tool radius necessary to avoid problems due to self
   // //   //     intersection around sharp corner.
@@ -257,7 +280,7 @@ const vector<CylCompoundToolpathTest> tests
   // //   default_results_directory
   // // },
 
-  // Test Class: Single Line.
+  // // Test Class: Single Line.
   // {
   //   "[single line]: simple1",
   //   {
@@ -271,6 +294,8 @@ const vector<CylCompoundToolpathTest> tests
   //     // Arcs of circles.
   //     {},
   //     // Interpolated curves.
+  //     {},
+  //     // Circles
   //     {}
   //   },
   //   default_cylindrical_tool,
@@ -291,6 +316,8 @@ const vector<CylCompoundToolpathTest> tests
   //     // Arcs of circles.
   //     {},
   //     // Interpolated curves.
+  //     {},
+  //     // Circles
   //     {}
   //   },
   //   default_cylindrical_tool,
@@ -311,6 +338,8 @@ const vector<CylCompoundToolpathTest> tests
   //     // Arcs of circles.
   //     {},
   //     // Interpolated curves.
+  //     {},
+  //     // Circles
   //     {}
   //   },
   //   default_cylindrical_tool,
@@ -332,6 +361,8 @@ const vector<CylCompoundToolpathTest> tests
   // //     // Arcs of circles.
   // //     {},
   // //     // Interpolated curves.
+  // //     {},
+  // //     // Circles.
   // //     {}
   // //   },
   // //   default_cylindrical_tool,
@@ -340,7 +371,7 @@ const vector<CylCompoundToolpathTest> tests
   // //   default_results_directory
   // // },
 
-  // Test Class: Single Arc of Circle.
+  // // Test Class: Single Arc of Circle.
   // {
   //   "[single arc of circle]: origin centered 1",
   //   {
@@ -354,6 +385,8 @@ const vector<CylCompoundToolpathTest> tests
   //       }  
   //     },
   //     // Interpolated curves.
+  //     {},
+  //     // Circles.
   //     {}
   //   },
   //   default_cylindrical_tool,
@@ -374,6 +407,8 @@ const vector<CylCompoundToolpathTest> tests
   //       }
   //     },
   //     // Interpolated curves.
+  //     {},
+  //     // Circles
   //     {}
   //   },
   //   default_cylindrical_tool,
@@ -394,6 +429,8 @@ const vector<CylCompoundToolpathTest> tests
   //       }
   //     },
   //     // Interpolated curves.
+  //     {},
+  //     // Circles
   //     {}
   //   },
   //   default_cylindrical_tool,
@@ -414,6 +451,8 @@ const vector<CylCompoundToolpathTest> tests
   //       }
   //     },
   //     // Interpolated curves.
+  //     {},
+  //     // Circles
   //     {}
   //   },
   //   default_cylindrical_tool,
@@ -434,6 +473,8 @@ const vector<CylCompoundToolpathTest> tests
   //       }
   //     },
   //     // Interpolated curves.
+  //     {},
+  //     // Circles
   //     {}
   //   },
   //   default_cylindrical_tool,
@@ -454,6 +495,8 @@ const vector<CylCompoundToolpathTest> tests
   //       }
   //     },
   //     // Interpolated curves.
+  //     {},
+  //     // Circles
   //     {}
   //   },
   //   default_cylindrical_tool,
@@ -474,6 +517,8 @@ const vector<CylCompoundToolpathTest> tests
   //       }
   //     },
   //     // Interpolated curves.
+  //     {},
+  //     // Circles
   //     {}
   //   },
   //   default_cylindrical_tool,
@@ -481,8 +526,106 @@ const vector<CylCompoundToolpathTest> tests
   //   default_visualize,
   //   default_results_directory
   // },
+  // 
+  // // Test Class: Single Circle. 
+  // {
+  //   "[single circle]: origin centered 1",
+  //   {
+  //     // Lines.
+  //     {},
+  //     // Arcs of circles.
+  //     {},
+  //     // Interpolated curves.
+  //     {},
+  //     // Circles.
+  //     {
+  //       {
+  //         {1, 0, 0},
+  //         {0, 1, 0},
+  //         {-1, 0, 0}
+  //       }
+  //     }
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // {
+  //   "[single circle]: origin centered 2",
+  //   {
+  //     // Lines.
+  //     {},
+  //     // Arcs of circles.
+  //     {},
+  //     // Interpolated curves.
+  //     {},
+  //     // Circles.
+  //     {
+  //       {
+  //         {1/sqrt(2), 1/sqrt(2), 0},
+  //         {-1/sqrt(2), -1/sqrt(2), 0},
+  //         {-1/sqrt(2), 1/sqrt(2), 0}
+  //       }
+  //     }
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // // This results in crazy geometry because the tool is oriented in the +Z
+  // //     direction.
+  // // {
+  // //   "[single circle]: non origin centered 3",
+  // //   {
+  // //     // Lines.
+  // //     {},
+  // //     // Arcs of circles.
+  // //     {},
+  // //     // Interpolated curves.
+  // //     {},
+  // //     // Circles.
+  // //     {
+  // //       {
+  // //         {0, 0, 0},
+  // //         {1, 0, 0},
+  // //         {0, 0, 1}
+  // //       }
+  // //     }
+  // //   },
+  // //   default_cylindrical_tool,
+  // //   default_mesh_options,
+  // //   default_visualize,
+  // //   default_results_directory
+  // // },
+  // {
+  //   "[single circle]: non origin centered 1",
+  //   {
+  //     // Lines.
+  //     {},
+  //     // Arcs of circles.
+  //     {},
+  //     // Interpolated curves.
+  //     {},
+  //     // Circles.
+  //     {
+  //       {
+  //         {1 + 2, 1, 0},
+  //         {1, 1 + 2, 0},
+  //         {1 - 2, 1, 0}
+  //       }
+  //     }
+  //   },
+  //   // For some reason I don't understand, using a larger tool radius results
+  //   //     in self intersection and crazy geometry.
+  //   {.1, 1},
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
 
-  // Test Class: Single Line + Single Arc of Circle.
+  // // Test Class: Single Line + Single Arc of Circle.
   // {
   //   "[single line + single arc of circle]: simple touching1",
   //   {
@@ -501,6 +644,8 @@ const vector<CylCompoundToolpathTest> tests
   //       }
   //     },
   //     // Interpolated curves.
+  //     {},
+  //     // Circles
   //     {}
   //   },
   //   default_cylindrical_tool,
@@ -526,6 +671,8 @@ const vector<CylCompoundToolpathTest> tests
   //       }
   //     },
   //     // Interpolated curves.
+  //     {},
+  //     // Circles
   //     {}
   //   },
   //   default_cylindrical_tool,
@@ -551,6 +698,8 @@ const vector<CylCompoundToolpathTest> tests
   //       }
   //     },
   //     // Interpolated curves.
+  //     {},
+  //     // Circles
   //     {}
   //   },
   //   default_cylindrical_tool,
@@ -576,6 +725,8 @@ const vector<CylCompoundToolpathTest> tests
   //       }
   //     },
   //     // Interpolated curves.
+  //     {},
+  //     // Circles
   //     {}
   //   },
   //   default_cylindrical_tool,
@@ -601,6 +752,8 @@ const vector<CylCompoundToolpathTest> tests
   //       }
   //     },
   //     // Interpolated curves.
+  //     {},
+  //     // Circles
   //     {}
   //   },
   //   default_cylindrical_tool,
@@ -626,6 +779,8 @@ const vector<CylCompoundToolpathTest> tests
   //       }
   //     },
   //     // Interpolated curves.
+  //     {},
+  //     // Circles
   //     {}
   //   },
   //   default_cylindrical_tool,
@@ -634,7 +789,7 @@ const vector<CylCompoundToolpathTest> tests
   //   default_results_directory
   // },
 
-  // Test Class: Multiple lines. 
+  // // Test Class: Multiple lines. 
   // {
   //   "[multiple lines]: two touching lines",
   //   {
@@ -652,6 +807,8 @@ const vector<CylCompoundToolpathTest> tests
   //     // Arcs of circles.
   //     {},
   //     // Interpolated curves.
+  //     {},
+  //     // Circles
   //     {}
   //   },
   //   default_cylindrical_tool,
@@ -676,6 +833,8 @@ const vector<CylCompoundToolpathTest> tests
   //     // Arcs of circles.
   //     {},
   //     // Interpolated curves.
+  //     {},
+  //     // Circles
   //     {}
   //   },
   //   default_cylindrical_tool,
@@ -708,6 +867,8 @@ const vector<CylCompoundToolpathTest> tests
   //     // Arcs of circles.
   //     {},
   //     // Interpolated curves.
+  //     {},
+  //     // Circles
   //     {}
   //   },
   //   default_cylindrical_tool,
@@ -742,6 +903,8 @@ const vector<CylCompoundToolpathTest> tests
   // //     // Arcs of circles.
   // //     {},
   // //     // Interpolated curves.
+  // //     {},
+  // //     // Circles.
   // //     {}
   // //   },
   // //   default_cylindrical_tool,
@@ -774,6 +937,8 @@ const vector<CylCompoundToolpathTest> tests
   //     // Arcs of circles.
   //     {},
   //     // Interpolated curves.
+  //     {},
+  //     // Circles
   //     {}
   //   },
   //   default_cylindrical_tool,
@@ -782,18 +947,200 @@ const vector<CylCompoundToolpathTest> tests
   //   default_results_directory
   // },
 
-  // Test Class: Multiple Circular Arcs.
+  // // Test Class: Multiple Circles.  
   // {
-  //   "[multiple circular arcs]: touching circular arcs",
+  //   "[multiple circles]: not touching",
   //   {
   //     // Lines.
   //     {},
   //     // Arcs of circles.
   //     {},
   //     // Interpolated curves.
-  //     {}
-  //   }
-  // }
+  //     {},
+  //     // Circles.
+  //     {
+  //       {
+  //         {1, 0, 0},
+  //         {0, 1, 0},
+  //         {-1, 0, 0}
+  //       },
+  //       {
+  //         {5 + 1, 5, 0},
+  //         {5, 5 + 1, 0},
+  //         {5 - 1, 5, 0}
+  //       }
+  //     }
+  //   },
+  //   default_cylindrical_tool,
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // {
+  //   "[multiple circles]: overlapping, concentric 1",
+  //   {
+  //     // Lines.
+  //     {},
+  //     // Arcs of circles.
+  //     {},
+  //     // Interpolated curves.
+  //     {},
+  //     // Circles.
+  //     {
+  //       {
+  //         {1, 0, 0},
+  //         {0, 1, 0},
+  //         {-1, 0, 0}
+  //       },
+  //       {
+  //         {.9, 0, 0},
+  //         {0, .9, 0},
+  //         {-.9, 0, 0}
+  //       },
+  //       {
+  //         {.8, 0, 0},
+  //         {0, .8, 0},
+  //         {-.8, 0, 0}
+  //       }
+  //     }
+  //   },
+  //   // Small tool radius necessary to avoid self intersection and crazy
+  //   //     geometry...
+  //   {.1, 1},
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // {
+  //   "[multiple circles]: overlapping, concentric 2",
+  //   {
+  //     // Lines.
+  //     {},
+  //     // Arcs of circles.
+  //     {},
+  //     // Interpolated curves.
+  //     {},
+  //     // Circles.
+  //     {
+  //       {
+  //         {1, 0, 0},
+  //         {0, 1, 0},
+  //         {-1, 0, 0}
+  //       },
+  //       {
+  //         {.8, 0, 0},
+  //         {0, .8, 0},
+  //         {-.8, 0, 0}
+  //       },
+  //     }
+  //   },
+  //   {.2, 1},
+  //   default_mesh_options,
+  //   default_visualize,
+  //   default_results_directory
+  // },
+  // // For some reason I don't understand, this results in an incorrect geometry!
+  // //     The inner circle, when generated is wrong. And the final geometry just
+  // //     does not include the inner circle.
+  // // {
+  // //   "[multiple circles]: overlapping, concentric 3",
+  // //   {
+  // //     // Lines.
+  // //     {},
+  // //     // Arcs of circles.
+  // //     {},
+  // //     // Interpolated curves.
+  // //     {},
+  // //     // Circles.
+  // //     {
+  // //       {
+  // //         {1, 0, 0},
+  // //         {0, 1, 0},
+  // //         {-1, 0, 0}
+  // //       },
+  // //       {
+  // //         {.8, 0, 0},
+  // //         {0, .8, 0},
+  // //         {-.8, 0, 0}
+  // //       },
+  // //     }
+  // //   },
+  // //   {.4, 1},
+  // //   default_mesh_options,
+  // //   default_visualize,
+  // //   default_results_directory
+  // // },
+  // // For some reason I don't understand, this results in an incorrect geometry!
+  // //     The inner circle, when generated is wrong. And the final geometry just
+  // //     does not include the inner circle.
+  // // {
+  // //   "[multiple circles]: overlapping, concentric, full circle",
+  // //   {
+  // //     // Lines.
+  // //     {},
+  // //     // Arcs of circles.
+  // //     {},
+  // //     // Interpolated curves.
+  // //     {},
+  // //     // Circles.
+  // //     {
+  // //       {
+  // //         {1, 0, 0},
+  // //         {0, 1, 0},
+  // //         {-1, 0, 0}
+  // //       },
+  // //       {
+  // //         {.9, 0, 0},
+  // //         {0, .9, 0},
+  // //         {-.9, 0, 0}
+  // //       },
+  // //       {
+  // //         {.8, 0, 0},
+  // //         {0, .8, 0},
+  // //         {-.8, 0, 0}
+  // //       },
+  // //       {
+  // //         {.7, 0, 0},
+  // //         {0, .7, 0},
+  // //         {-.7, 0, 0}
+  // //       },
+  // //       {
+  // //         {.6, 0, 0},
+  // //         {0, .6, 0},
+  // //         {-.6, 0, 0}
+  // //       },
+  // //       {
+  // //         {.5, 0, 0},
+  // //         {0, .5, 0},
+  // //         {-.5, 0, 0}
+  // //       },
+  // //       {
+  // //         {.4, 0, 0},
+  // //         {0, .4, 0},
+  // //         {-.4, 0, 0}
+  // //       },
+  // //       {
+  // //         {.3, 0, 0},
+  // //         {0, .3, 0},
+  // //         {-.3, 0, 0}
+  // //       },
+  // //       {
+  // //         {.2, 0, 0},
+  // //         {0, .2, 0},
+  // //         {-.2, 0, 0}
+  // //       },
+  // //       {
+  // //         {.1, 0, 0},
+  // //         {0, .1, 0},
+  // //         {-.1, 0, 0}
+  // //       },
+  // //     }
+  // //   },
+  // //   {.1, 1},
+  // //   default_mesh_options,
+  // //   default_visualize,
+  // //   default_results_directory
+  // // }
 };
 
 /* 

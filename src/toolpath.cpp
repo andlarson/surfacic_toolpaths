@@ -2,6 +2,7 @@
 #include <vector>
 #include <fstream>
 #include <cassert>
+#include <stdexcept>
 
 // Third party.
 
@@ -224,7 +225,8 @@ static TopoDS_Shape build_vertical_cylinder(const gp_Pnt& loc,
 */
 ToolPath::ToolPath(const std::tuple<std::vector<Line>, 
                                     std::vector<ArcOfCircle>,
-                                    std::vector<InterpolatedCurve>> compound,
+                                    std::vector<InterpolatedCurve>,
+                                    std::vector<Circle>> compound,
                    const CylindricalTool& profile,
                    const bool display)
 {
@@ -243,6 +245,12 @@ ToolPath::ToolPath(const std::tuple<std::vector<Line>,
     for (const InterpolatedCurve& c : get<2>(compound))
     {
         const TopoDS_Shape curved {curved_toolpath(c, profile, display)};
+        add_shape(curved);
+    }
+
+    for (const Circle& c : get<3>(compound))
+    {
+        const TopoDS_Shape curved {curved_toolpath(c, profile, display, false)};
         add_shape(curved);
     }
 
@@ -327,7 +335,6 @@ void ToolPath::shape_to_stl(const std::string solid_name,
 
     // Ensure that ample precision is used when writing to the .stl. 
     f.precision(FP_WRITE_PRECISION);
-
     assert(f.good());
 
     f << "solid " << solid_name << std::endl;
@@ -390,23 +397,8 @@ void ToolPath::add_shape(const TopoDS_Shape& s)
 
 /*
     Sweeps a profile along a curve and adds caps, forming a curved toolpath.
-    
-    Requires:
-        (1) The tangent at the first point on the curve lies on a plane parallel
-                to the XY-plane. 
-        (2) The tangent at the last point on the curve lies on a plane parallel
-                to the XY-plane.
-        (3) The curve is G1 continuous.
-        (4) The toolpath does not intersect itself. 
 
-    Assumes:
-        (1) The rotational axis of symmetry of the tool profile points in the +Z
-                direction at the first point on the curve. This affects how the
-                caps are built.
-        (2) The curve describes the path taken in space by the center point of
-                the bottom of the tool.
-    
-    Notes for future improvement:
+    Notes:
         The angle between the tool profile and the curve is maintained along
             the entirety of the curve. This does not mean that the rotational axis
             of symmetry of the tool points in the +Z direction along the
@@ -419,28 +411,46 @@ void ToolPath::add_shape(const TopoDS_Shape& s)
             topology, find the faces that intersect the start and end points,
             and use the geometry of the faces (their shape and normal) to compute
             the correct axis of rotation and the correct sweep angles.
-        It would be awfully nice to be able to check if the result of sweeping
+        TODO: It would be awfully nice to be able to check if the result of sweeping
             the profile is a closed topology. Unfortunately, the IsClosed()
             member function returns false even when the topology is closed.
             Maybe BRepOffsetAPI_MakePipe doesn't update the Closed flag?  Also,
             checking if the topology is a solid via TopoDS's ShapeType member
-            function is also ineffective.
+            function also doesn't work. 
+    
+    Requires:
+        (1) The curve is G1 continuous.
+        (2) If the curve is not closed, caps must be added. If the curve is closed,
+                caps cannot be added. Adding caps to closed curves is unnecessary.
 
+    Assumes:
+        (1) The rotational axis of symmetry of the tool profile points in the +Z
+                direction at the first point on the curve. This affects how the
+                caps are built.
+        (2) The curve describes the path taken in space by the center point of
+                the bottom of the tool.
+    
     Arguments:
-        curve:   Curve describing the path that the center point of the
-                     bottom face of the tool takes in space.
-        profile: The cross section of the tool.
-        display: Causes windows to be created showing the results of
-                     toolpath creation. 
+        curve:    Curve describing the path that the center point of the
+                      bottom face of the tool takes in space.
+        profile:  The cross section of the tool.
+        display:  Causes windows to be created showing the results of
+                      toolpath creation. 
+        add_caps: Adds caps at the start point of the curve and the end point
+                      of the curve. Unnecessary when the curve is closed (e.g.
+                      a circle).
     
     Return:
-        The shape resulting from extruding the profile along the curve.
+        The shape resulting from extruding the profile along the curve. May not
+            be closed, as a result of self intersection.
 */
 TopoDS_Shape ToolPath::curved_toolpath(const Curve& curve,
                                        const CylindricalTool& profile,
-                                       const bool display) const
+                                       const bool display,
+                                       const bool add_caps) const
 {
     const Handle(Geom_BSplineCurve) bspline {curve.representation};
+    assert(((*bspline).IsClosed() and !add_caps) or (!(*bspline).IsClosed() and add_caps));
 
     // Build topology from the geometry.
     BRepBuilderAPI_MakeEdge edge_topology_builder {bspline};
@@ -462,9 +472,6 @@ TopoDS_Shape ToolPath::curved_toolpath(const Curve& curve,
     gp_Pnt unused;
     bspline->D1(start_parameter, unused, tangent_start);
 
-    // The tangent vector must lie in the XY-plane.
-    assert(tangent_start.Z() < FP_EQUALS_TOLERANCE);
-
     const TopoDS_Face profile_topology {construct_rect_face(tangent_start, start, profile.radius * 2, profile.height)};
     
     if (display)
@@ -476,26 +483,33 @@ TopoDS_Shape ToolPath::curved_toolpath(const Curve& curve,
 
     // Do the sweep.
     const BRepOffsetAPI_MakePipe pipe_topology_builder {curve_wire_topology, profile_topology};
-    const TopoDS_Shape pipe_topology {pipe_topology_builder.Pipe().Shape()}; 
+    TopoDS_Shape pipe_topology {pipe_topology_builder.Pipe().Shape()}; 
+    // This assertion fails even when the shape looks like it is closed...
+    //     I have no idea why...
+    // assert(pipe_topology.Closed());
     
-    // Build the cylinders that act as the start and end caps of the tool path. 
-    // Assumes that caps should have axis of rotation in +Z direction.
-    TopoDS_Shape start_cap {build_vertical_cylinder(start, profile.radius, profile.height)};
-    TopoDS_Shape end_cap {build_vertical_cylinder(end, profile.radius, profile.height)};
+    if (add_caps)
+    {
+        // Build the cylinders that act as the start and end caps of the tool path. 
+        // Assumes that caps should have axis of rotation in +Z direction.
+        TopoDS_Shape start_cap {build_vertical_cylinder(start, profile.radius, profile.height)};
+        TopoDS_Shape end_cap {build_vertical_cylinder(end, profile.radius, profile.height)};
 
-    BRepAlgoAPI_Fuse pipe_topology_with_start_cap {pipe_topology, start_cap};
-    assert(!pipe_topology_with_start_cap.HasErrors());
-    BRepAlgoAPI_Fuse pipe_topology_with_both_caps {pipe_topology_with_start_cap.Shape(), end_cap};
-    assert(!pipe_topology_with_both_caps.HasErrors());
+        BRepAlgoAPI_Fuse pipe_topology_with_start_cap {pipe_topology, start_cap};
+        assert(!pipe_topology_with_start_cap.HasErrors());
+        BRepAlgoAPI_Fuse pipe_topology_with_both_caps {pipe_topology_with_start_cap.Shape(), end_cap};
+        assert(!pipe_topology_with_both_caps.HasErrors());
+        pipe_topology = pipe_topology_with_both_caps;
+    }
 
     if (display)
     {
-        const std::vector<TopoDS_Shape> shapes {pipe_topology_with_both_caps};
+        const std::vector<TopoDS_Shape> shapes {pipe_topology};
         GlfwOcctView view;
         view.show_shapes(shapes);     
     }
-
-    return pipe_topology_with_both_caps;
+    
+    return pipe_topology;
 }
 
 /*

@@ -15,6 +15,7 @@ class CylindricalTool;
 class Line;
 class ArcOfCircle;
 class InterpolatedCurve;
+class Circle;
 
 class ToolPath
 {
@@ -24,7 +25,8 @@ class ToolPath
 
     TopoDS_Shape curved_toolpath(const Curve& curve,
                                  const CylindricalTool& profile,
-                                 const bool display=false) const;
+                                 const bool display=false,
+                                 const bool add_caps=true) const;
 
     TopoDS_Shape linear_toolpath(const Line& curve,
                                  const CylindricalTool& profile,
@@ -33,7 +35,8 @@ class ToolPath
 public:
     ToolPath(const std::tuple<std::vector<Line>, 
                               std::vector<ArcOfCircle>,
-                              std::vector<InterpolatedCurve>> compound,
+                              std::vector<InterpolatedCurve>,
+                              std::vector<Circle>> compound,
              const CylindricalTool& profile,
              const bool display=false);
 
@@ -78,6 +81,12 @@ class ArcOfCircle : public Curve
 public:
     ArcOfCircle(const std::pair<Point3D, Point3D>& arc_endpoints,
                 const Point3D& interior_point);
+};
+
+class Circle : public Curve
+{
+public:
+    Circle(const Point3D& p1, const Point3D& p2, const Point3D& p3);
 };
 
 class Line : public Path
